@@ -20,3 +20,12 @@ header .seal { background: #e9d6c2; color: #643724; font: 600 20px Georgia, seri
  .guest-menu-grid { grid-template-columns: 1fr; }
 }
 .guest-menu-item img { flex: 0 0 125px; width: 125px; height: 125px; object-fit: cover; align-self: center; margin: 0; border-radius: 0; }
+.farm-cover .farm-copy { container-type: inline-size; }
+.farm-cover .farm-copy > p[data-restaurant-name] {
+  font-family: "Noto Serif TC", "Noto Serif CJK TC", "Songti TC", "PMingLiU", serif;
+  font-size: clamp(16px, 12cqi, 56px);
+  font-weight: 400;
+  letter-spacing: .04em;
+  line-height: 1.25;
+  white-space: nowrap;
+}
