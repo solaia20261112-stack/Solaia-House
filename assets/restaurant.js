@@ -552,6 +552,15 @@ function fillMenu() {
   menuForm.elements.active.checked=dish.active;
 }
 menuPicker.addEventListener('change',fillMenu);
+const menuActions = node('div', undefined, 'actions');
+const addMenuDish = button('新增餐點', () => {
+  if (menuForm.querySelector('button[type="submit"]').disabled) return;
+  menuPicker.value = '';
+  fillMenu();
+  menuForm.elements.name.focus();
+});
+menuActions.append(addMenuDish);
+menuPicker.closest('label').after(menuActions);
 function onForm(id,action) {
   const el=byId(id);
   el.addEventListener('submit',async event=>{
