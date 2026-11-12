@@ -539,7 +539,7 @@ const menuPicker=byId('menu-picker');
 let catalog=[];
 async function loadCatalog(selected='') {
   catalog=await checked(db.from('restaurant_menu').select('id,name,category,price,active,image_path').order('category').order('name'));
-  menuPicker.replaceChildren(new Option('新增餐點',''));
+  menuPicker.replaceChildren(new Option('修改餐點價格',''));
   for(const dish of catalog) menuPicker.add(new Option(dish.name+(dish.active?'':'（已下架）'),dish.id));
   menuPicker.value=selected;
   fillMenu();
