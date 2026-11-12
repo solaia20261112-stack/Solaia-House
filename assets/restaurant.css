@@ -1,0 +1,22 @@
+:root { --ink: #29271f; --paper: #f7f3eb; --line: #e3dacf; --accent: #8c432f; }
+body { background: var(--paper); }
+header { background: #fbf7ef; border-bottom: 1px solid var(--line); }
+header .brand strong, .farm-copy > p { font-family: "Instrument Serif", "Noto Serif TC", "Songti TC", serif; transform: none; letter-spacing: .05em; }
+.brand-caption { color: #67584a; }
+header .seal { background: #e9d6c2; color: #643724; font: 600 20px Georgia, serif; }
+.farm-cover { grid-template-columns: minmax(0, .8fr) minmax(0, 1.3fr); background: #302d22; color: #fff9ed; border: 0; border-radius: 12px; }
+.farm-cover .farm-copy, .farm-cover .farm-label { color: #fff9ed; }
+.farm-cover img { height: clamp(260px, 35vw, 440px); object-position: 50% 52%; }
+#guest-dishes { display: block; }
+.guest-menu-group + .guest-menu-group { margin-top: 28px; }
+.guest-menu-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.guest-menu-item { display: flex; align-items: stretch; padding: 0; overflow: hidden; min-height: 124px; background: #fffdf8; }
+.guest-menu-copy { flex: 1; padding: 14px 16px; }
+.guest-menu-copy h3 { font-size: 1.06rem; line-height: 1.4; margin: 0 0 5px; }
+.guest-menu-copy p { color: #655a4b; font-size: .92rem; margin: 6px 0 0; }
+@media (max-width: 650px) {
+ .farm-cover { grid-template-columns: 1fr; }
+ .farm-cover img { height: 260px; }
+ .guest-menu-grid { grid-template-columns: 1fr; }
+}
+.guest-menu-item img { flex: 0 0 125px; width: 125px; height: 125px; object-fit: cover; align-self: center; margin: 0; border-radius: 0; }

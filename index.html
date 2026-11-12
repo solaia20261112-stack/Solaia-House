@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-Hant"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>義式餐廳｜點餐與訂位</title><style>:root{color-scheme:light;--ink:#28251e;--paper:#f7f1e6;--line:#d8cbb7;--accent:#943522}*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 system-ui,sans-serif}header{background:#282018;color:#fff5e6;padding:16px 0}header a{color:inherit}.wrap{width:min(1150px,calc(100% - 32px));margin:auto}header .wrap,.row{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}main{padding:24px 0 54px}h1{margin:8px 0;font-size:clamp(30px,5vw,48px)}h2{margin:0 0 12px}p{margin:8px 0 16px}.muted{color:#655440}.panel{background:#fffaf2;border:1px solid var(--line);border-radius:12px;padding:18px}.form{max-width:650px}.grid,.dishes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}label{display:grid;gap:6px;margin-bottom:12px;font-weight:600}input,select,button{font:inherit;min-height:48px;border:1px solid #ad9b83;border-radius:8px;padding:8px 12px;color:inherit;background:#fff}input,select{width:100%}button{cursor:pointer;font-weight:650}button.primary,button[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:white}button:disabled{opacity:.55;cursor:default}.dish{text-align:left;min-height:79px}.dish small{display:block;color:#655440}.line{border-bottom:1px solid var(--line);padding:10px 0}.line button{min-width:48px}.message{margin:12px 0;color:#7c311f;font-weight:650;overflow-wrap:anywhere}[hidden]{display:none!important}:focus-visible{outline:3px solid #bf6b3e;outline-offset:2px}@media(max-width:740px){.layout{grid-template-columns:1fr}}@media(max-width:380px){.grid{grid-template-columns:1fr}}
+
+#new-booking{margin:14px 0;border:1px solid var(--line);border-radius:8px;padding:0 12px}#new-booking summary{cursor:pointer;padding:13px 0;font-weight:700}#phone-booking{padding-bottom:12px}
+
+:root{--ink:#2f211c;--paper:#f7efe1;--line:#dbc5a5;--accent:#8e2827}
+body{background:radial-gradient(ellipse at top,#fffaf1,var(--paper) 65%)}
+header{background:#501f21;color:#fff4dc;border-bottom:3px solid #b88a52}
+.brand{display:flex;align-items:center;gap:12px}
+.brand strong,h1,h2,.seal{font-family:"Noto Serif TC","Songti TC","PMingLiU",serif}
+.brand strong{font-size:25px;letter-spacing:.12em}.brand-caption{display:block;font-size:12px;color:#f1d1a8}
+.seal{display:grid;place-items:center;width:42px;height:42px;border:1px solid #e8bc80;border-radius:6px;color:#ffe1a8;font-size:25px}
+.mode{color:#ffe1a8;border:1px solid #b88a52;border-radius:20px;padding:4px 12px;font-size:13px}
+.eyebrow{font-weight:700;letter-spacing:.14em;color:#842929}h1{letter-spacing:.035em}
+.panel{box-shadow:0 6px 18px #5b2e1510}.dish{background:#fffaf2;border-color:#d7bd98}
+.dish small{color:#842929;font-weight:700;margin-top:4px}
+#total{color:#842929;font-size:24px}#pay{width:100%}
+@media(max-width:380px){.dishes{grid-template-columns:1fr}}
+
+header{background:#263b31;border-color:#b59162}
+:root{--accent:#355843;--paper:#f4f1e6}
+.farm-cover{display:grid;grid-template-columns:1fr 1.1fr;margin:0 0 22px;overflow:hidden;border:1px solid #d2c4ac;border-radius:14px;background:#263b31;color:#fff6e6}
+.farm-copy{align-self:center;padding:clamp(20px,4vw,52px)}
+.farm-copy p{font-family:"Noto Serif TC","Songti TC","PMingLiU",serif;font-size:clamp(30px,5vw,58px);font-weight:750;letter-spacing:.045em;line-height:1.15;margin:10px 0 14px}
+.farm-label{color:#eed3a8;font-weight:700;letter-spacing:.2em;font-size:13px}
+.farm-cover img{width:100%;height:clamp(180px,24vw,290px);object-fit:cover;object-position:50% 40%;display:block}
+@media(max-width:600px){.farm-cover{grid-template-columns:1fr}.farm-cover img{height:190px}}
+.guest-card img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;margin-bottom:10px}.guest-card h3{margin:5px 0}.tick{display:flex;align-items:center}.tick input{width:20px;min-height:auto}#send-kitchen{margin-bottom:8px;width:100%}.revenue-order{border-top:1px solid var(--line);padding:8px 0}.revenue-order summary{cursor:pointer;font-weight:650;min-height:44px;padding:10px 0}.revenue-order table{width:100%;border-collapse:collapse}.revenue-order th,.revenue-order td{text-align:left;padding:8px 5px;border-bottom:1px solid var(--line)}.revenue-order th:not(:first-child),.revenue-order td:not(:first-child){text-align:right}#booking-overview{margin:12px 0 16px}.booking-overview-list{max-height:18rem;overflow:auto}.booking-overview-list p{margin:3px 0;overflow-wrap:anywhere}#booking-overview-status:empty{display:none}.booking-today{color:#842929}.edit-dialog{border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink);width:min(760px,95vw);max-height:90vh;overflow:auto;padding:22px}.edit-dialog::backdrop{background:#0007}.edit-dialog input,.edit-dialog select{min-width:0}body,header,.farm-cover,.panel,.dish,.edit-dialog,input,select,button{background:var(--paper)}
+header,.farm-cover,.brand-caption,.farm-label,.seal,.mode{color:var(--ink)}
+header a{color:var(--ink)}
+button.primary,button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+.workspace-columns{display:grid;grid-template-columns:minmax(0,2fr) minmax(240px,1fr);gap:16px;align-items:start}
+.workspace-main{min-width:0}
+#booking-overview{margin:16px 0 0;padding:12px;position:sticky;top:12px}
+#booking-overview h2{font-size:22px;margin:0}
+#booking-overview button{min-height:36px;padding:5px 9px;font-size:14px}
+#booking-overview .line{padding:8px 0;font-size:14px}
+#booking-overview .tabs{margin:6px 0;gap:6px}
+#booking-overview .booking-overview-list{max-height:24rem}
+.workspace-columns:has(#workspace-sidebar[hidden]){grid-template-columns:minmax(0,1fr)}
+.workspace-columns #order{grid-template-columns:minmax(0,1fr)}
+@media(min-width:1500px){.workspace-columns #order{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}}
+@media(max-width:760px){.workspace-columns{grid-template-columns:minmax(0,1fr)}#booking-overview{position:static}.booking-overview-list{max-height:12rem}}
+
+/* 右側工作提醒：各分頁持續顯示訂位及待確認客單。 */
+#workspace-sidebar{position:sticky;top:12px;min-width:0;max-height:calc(100vh - 24px);overflow-y:auto;overflow-wrap:anywhere;display:grid;gap:12px;padding-top:16px}
+#workspace-sidebar #booking-overview{position:static;margin:0}
+#workspace-sidebar .booking-overview-list{max-height:24vh;overflow-y:auto}
+#guest-review-overview{padding:12px;min-width:0}
+#guest-review-overview h2{font-size:22px;margin:0}
+#guest-review-overview button{min-height:44px;padding:7px 9px;font-size:14px}
+#guest-review-overview .row{gap:8px}
+#guest-review-overview .panel{padding:10px;margin-top:10px;box-shadow:none}
+#guest-review-overview h3{font-size:17px;margin:4px 0 8px}
+#guest-review-overview p{font-size:14px;margin:6px 0}
+#guest-review-overview .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#guest-review-status:empty{display:none}
+#guest-order-pending{max-height:48vh;overflow-y:auto}
+@media(max-width:760px){#workspace-sidebar{position:static;max-height:none;overflow:visible;grid-row:1;padding-top:0}.workspace-main{grid-row:2}#workspace-sidebar .booking-overview-list{max-height:12rem}#guest-order-pending{max-height:24rem}}
+
+.has-pending{border:2px solid #a53924!important;animation:pending-glow 1.5s ease-in-out infinite}
+@keyframes pending-glow{50%{box-shadow:0 0 0 4px #a5392425}}
+@media(prefers-reduced-motion:reduce){.has-pending{animation:none}}
+.sound-controls{margin:10px 0;font-size:14px}.kitchen-batch,.kitchen-change{margin-bottom:12px}.kitchen-batch h3,.kitchen-change h3{margin:4px 0 10px}.kitchen-change{border-color:#a53924}.close-table{width:100%;border-collapse:collapse}.close-table th,.close-table td{padding:8px;border-bottom:1px solid var(--line);text-align:left}.close-table td{text-align:right}
+textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px solid #ad9b83;border-radius:8px;background:var(--paper);color:var(--ink)}
+.counter-note-text{white-space:pre-wrap}
+.variant-note{white-space:pre-wrap;color:#842929;font-weight:650;margin:5px 0}.variant-row .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* 主要作業靠近聲音提醒，其餘功能維持兩行固定順序。 */
+.sound-controls{display:grid;gap:8px;margin:12px 0 16px}
+.primary-work-tabs{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.primary-work-tabs button[data-tab]{font-size:22px;font-weight:800;min-height:64px;padding:12px 20px;border:2px solid var(--accent)}
+.primary-work-tabs #sound-toggle{font-size:16px;min-height:48px}
+.sound-controls .actions:empty{display:none}
+.work-nav{display:grid;gap:8px;margin:16px 0}
+.work-nav-row{display:grid;gap:8px;overflow-x:auto;padding-bottom:3px}
+.work-nav-first{grid-template-columns:repeat(5,minmax(90px,1fr))}
+.work-nav-second{grid-template-columns:repeat(4,minmax(90px,1fr))}
+.work-nav button{white-space:nowrap;font-size:16px;padding:8px;min-height:50px}
+@media(max-width:480px){.primary-work-tabs button[data-tab]{font-size:20px;padding:10px 14px;min-height:60px}}
+
+/* Embedded six-character brand subset: consistent brush lettering on tablets. */
+@font-face{font-family:"Linglan Brush";src:url("data:font/woff;base64,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") format("woff");font-style:normal;font-weight:400;font-display:swap;unicode-range:U+82D3,U+862D,U+751F,U+614B,U+8FB2,U+5712}
+.brand strong,.farm-copy>p,.seal{font-family:"Linglan Brush","Kaiti TC","STKaiti","KaiTi",serif;font-weight:400;font-synthesis:none}
+.brand strong{display:inline-block;font-size:33px;letter-spacing:.08em;line-height:1.35;transform:skewX(-5deg);padding:0 .08em}
+.farm-copy>p{font-size:clamp(38px,5.8vw,64px);letter-spacing:.04em;line-height:1.3;transform:skewX(-5deg);padding:0 .06em}
+.seal{font-size:32px;line-height:1}
+.work-nav-first{grid-template-columns:repeat(3,minmax(90px,1fr)) minmax(122px,1.3fr) minmax(90px,1fr)}
+@media(max-width:480px){.brand strong{font-size:29px}}
+
+/* Tablet counter: menu and checkout stay side by side with separate scrolling. */
+@media(min-width:768px){
+ .wrap{width:min(1560px,calc(100% - 24px))}
+ .workspace-columns{grid-template-columns:minmax(0,1fr) clamp(200px,22vw,300px)}
+ .workspace-columns #order{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:stretch}
+ #order>.panel{min-width:0;height:calc(100vh - 32px);height:calc(100dvh - 32px);max-height:900px;padding:14px}
+ #order>.order-menu-panel{overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch}
+ #order>.order-cart-panel{display:flex;flex-direction:column;overflow:hidden}
+ #order .order-cart-panel>h2{flex:none;margin-bottom:10px}
+ #checkout{display:flex;flex-direction:column;flex:1;min-height:0}
+ #checkout>.checkout-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;padding-right:3px}
+ #checkout>.checkout-footer{flex:none;border-top:1px solid var(--line);padding-top:10px;margin-top:8px;background:var(--paper)}
+ .checkout-footer>.row{margin:0 0 8px;gap:6px}
+ .checkout-options{gap:8px}
+ .checkout-options label{font-size:14px;gap:4px;margin-bottom:8px}
+ .checkout-options input,.checkout-options select{min-height:44px;padding:6px 8px;font-size:16px}
+ .checkout-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .checkout-actions button{width:100%;min-width:0;padding:8px 6px;min-height:48px;font-size:16px;margin:0!important}
+ #order #categories{gap:6px;margin:10px 0}
+ #order #categories button{font-size:14px;padding:7px 9px;min-height:44px}
+ #order .dishes{gap:8px}
+ #order .dish{padding:10px 8px;overflow-wrap:anywhere}
+ #order .variant-row .actions{gap:5px}
+ #order .variant-row button{font-size:14px;padding:6px;min-height:44px}
+}
+/* Portrait tablets give both working panes enough width; reminders remain below. */
+@media(min-width:768px) and (max-width:979px){
+ .workspace-columns:has(#order:not([hidden])){grid-template-columns:minmax(0,1fr)}
+ .workspace-columns:has(#order:not([hidden])) #workspace-sidebar{position:static;max-height:none;overflow:visible;grid-template-columns:repeat(2,minmax(0,1fr));padding-top:0}
+}
+@media(max-width:767px){.checkout-options{grid-template-columns:1fr}.checkout-actions button{margin-bottom:8px}}
+</style>
+<link rel="stylesheet" href="assets/restaurant.css">
+<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>義式餐廳</strong></div></div><a class="mode" href="?view=menu">客人菜單</a></nav></header>
+<main class="wrap"><section class="farm-cover" aria-label="餐廳封面"><div class="farm-copy"><p data-restaurant-name>義式餐廳</p><span>義大利麵 · 燉飯 · 手作甜點</span></div><img alt="義式料理與飲品餐桌" width="2048" height="1638" src="assets/cover.jpg"></section><section id="guest-menu" hidden><h1 id="guest-menu-title">義式餐廳菜單</h1><div id="guest-categories" class="tabs"></div><p id="guest-status" role="status"></p><p class="menu-notes">餐點附手工麵包。需要加辣可在點餐備註填寫小辣、中辣或大辣。</p>
+<div id="guest-dishes" class="dishes"></div></section><div id="staff-heading"><div class="eyebrow">店員工作台</div><h1>點餐與訂位</h1></div><section id="guest-order" hidden><h1 id="guest-table-title">本桌點餐</h1><p id="guest-order-state" role="status">載入中…</p>
+<button type="button" id="guest-new-visit" hidden>開始新的用餐</button><div class="tabs" id="guest-order-categories"></div><div id="guest-order-dishes" class="dishes"></div>
+<section class="panel"><h2>這次要點的餐點</h2><div id="guest-basket"></div><strong id="guest-total"></strong>
+<label>本次共通備註<textarea id="guest-note" maxlength="300" placeholder="例如先上飲料、分開上菜；個別需求請在每筆餐點設定"></textarea></label>
+<p class="muted">金額供核對，實際收款由櫃台依整桌餐點與折扣結帳。</p><div class="actions"><button id="guest-send" class="primary" type="button" disabled>確認送出點餐</button><button id="guest-clear" type="button">清空未送餐點</button></div><p id="guest-send-status" role="status"></p></section>
+<section class="panel"><h2>本桌已送出的餐點</h2><button id="guest-state-refresh" type="button">更新狀態</button><div id="guest-history"></div></section></section>
+<form id="staff-login" class="panel form">
+<h2>店員登入</h2><label>電子郵件<input type="email" name="email" autocomplete="username" required></label>
+<label>密碼<input type="password" name="password" autocomplete="current-password" required></label>
+<button class="primary" disabled>登入</button><p id="login-status" role="status"></p></form>
+<div id="staff-app" hidden><div class="row"><p class="muted">訂位與已結帳紀錄儲存於餐飲資料庫。結帳僅記錄付款方式。</p><button type="button" id="sign-out">登出</button></div>
+<div class="sound-controls">
+<div class="primary-work-tabs" aria-label="主要工作">
+<button type="button" id="sound-toggle">啟用聲音提醒</button>
+<button type="button" data-tab="order" aria-pressed="true">櫃台點餐結帳</button>
+<button type="button" data-tab="kitchen" aria-pressed="false">出餐看板<span id="kitchen-change-count"></span></button>
+</div>
+<span id="sound-status" role="status"></span>
+<div class="actions"><button type="button" id="kitchen-change-alert" hidden>廚房有餐點異動待確認</button><button type="button" id="amendment-retry" hidden>重試桌單異動</button></div>
+</div><div class="workspace-columns"><div class="workspace-main">
+<nav class="work-nav" aria-label="工作台分頁">
+<div class="work-nav-row work-nav-first" aria-label="日常營運">
+<button type="button" data-tab="bookings" aria-pressed="false">訂位管理</button>
+<button type="button" data-tab="open-tables" aria-pressed="false">待結帳</button>
+<button type="button" data-tab="sales" aria-pressed="false">今日交易</button>
+<button type="button" data-tab="availability" aria-pressed="false">今日供餐項目</button>
+<button type="button" data-tab="close-report" aria-pressed="false">收班核對</button>
+</div>
+<div class="work-nav-row work-nav-second" aria-label="設定與管理">
+<button type="button" data-tab="menu-admin" aria-pressed="false" hidden>菜單管理</button>
+<button type="button" data-tab="dining" aria-pressed="false">QR 點餐<span id="guest-order-count"></span></button>
+<button type="button" data-tab="revenue" aria-pressed="false" hidden>營收統計</button>
+<button type="button" data-tab="staff-admin" aria-pressed="false" hidden>員工管理</button>
+</div>
+</nav>
+<button type="button" id="guest-order-badge" class="primary" hidden>客人點餐待確認</button><div class="message" id="notice" role="status"></div>
+<section id="order" class="layout">
+<div class="panel order-menu-panel"><h2>義式餐廳菜單</h2><p class="muted">菜單價格 · 新台幣</p><div class="tabs" id="categories"></div><div class="dishes" id="dishes"></div></div>
+<div class="panel order-cart-panel"><h2>目前訂單</h2>
+<form id="checkout"><div class="checkout-body">
+<div class="grid"><label>用餐方式<select name="service"><option>內用</option><option>外帶</option></select></label>
+<label id="table-field">桌號<input name="table" maxlength="20" placeholder="例 A01" required></label></div>
+<div id="cart"></div><label>本次共通備註（選填）<textarea name="note" id="counter-note" maxlength="300" placeholder="例如先上飲料、分開上菜。個別需求請在每筆餐點設定。"></textarea></label>
+</div><div class="checkout-footer">
+<p class="row"><span>餐點小計</span><strong id="subtotal">NT$ 0</strong></p>
+
+<p class="row"><strong>應收金額</strong><strong id="total">NT$ 0</strong></p>
+
+<div class="grid checkout-options"><label>折扣金額（元）<input type="number" id="discount" name="discount" value="0" min="0" step="1" required inputmode="numeric"></label><label>付款方式<select name="payment"><option>現金</option><option>刷卡</option><option>行動支付</option></select></label></div>
+<div class="checkout-actions"><button type="button" id="cancel-addon" hidden>結束加點</button>
+<button type="button" id="send-kitchen" disabled>送廚房</button>
+<button type="button" id="return-ticket" hidden>返回待結帳清單</button>
+<button class="primary" id="pay" disabled>記錄收款並結帳</button></div></div>
+</form></div>
+</section>
+<section id="bookings" class="panel" hidden><div class="row"><h2>即將到來的訂位</h2><button data-refresh="bookings">重新整理</button></div><details id="new-booking">
+<summary>新增電話訂位</summary>
+<form class="form" id="phone-booking">
+<div class="grid">
+<label>用餐日期<input name="day" type="date" required></label>
+<label>用餐時間<input name="slot" type="time" step="60" required></label>
+<label>用餐人數<input name="guests" type="number" min="1" max="8" value="2" required></label>
+<label>訂位姓名<input name="name" maxlength="50" autocomplete="off" required></label>
+<label>聯絡電話<input name="phone" type="tel" maxlength="30" autocomplete="off" required></label>
+</div>
+<label>桌號（選填）<input name="table_label" maxlength="20" placeholder="例 A01"></label>
+<label>備註<input name="note" maxlength="200"></label>
+<p class="muted">週一店休。請先確認有座位，再登記電話訂位。</p>
+<button class="primary">儲存電話訂位</button><div class="message" role="status"></div>
+</form></details><div id="booking-list"></div></section>
+<section id="sales" class="panel" hidden><div class="row"><h2>今日交易</h2><button data-refresh="sales">重新整理</button></div><div id="sale-list"></div></section>
+<section id="open-tables" class="panel" hidden>
+<div class="row"><h2>待結帳桌單</h2><button type="button" id="tables-refresh">重新整理</button></div>
+<label>桌號查找<input id="table-search" placeholder="輸入桌號後按 Enter"></label>
+<div id="tables-list" aria-live="polite"></div></section>
+<section id="kitchen" class="panel" hidden><div class="row"><h2>出餐看板</h2><button type="button" id="kitchen-refresh">重新整理</button></div><p class="muted">此區只顯示待製作、製作中及未確認異動。完成出餐與已確認的取消／退菜會移至下方紀錄。</p><div id="kitchen-list"></div><details id="kitchen-history" hidden><summary id="kitchen-history-summary">已完成出餐與已確認異動</summary><p class="muted">僅供查閱，不需再次製作或送餐。顯示當日可查詢的完成紀錄。</p><div id="kitchen-history-list"></div></details></section>
+<section id="menu-admin" class="panel" hidden><h2>菜單管理</h2><label>選擇餐點<select id="menu-picker"></select></label>
+<form id="edit-menu" class="form"><div class="grid"><label>餐點名稱<input name="name" maxlength="60" required></label><label>分類<input name="category" maxlength="30" required></label>
+<label>售價（元）<input type="number" name="price" min="0" max="1000000" step="1" required></label><label>菜單照片<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label></div>
+<label class="tick"><input type="checkbox" name="active" checked>供應中，顯示在公開菜單</label><button class="primary" type="submit">儲存餐點</button></form></section>
+<section id="availability" class="panel" hidden><h2>今日供餐項目</h2><p>售完設定只限今天（台灣時間），隔天自動恢復供應。永久停賣請由管理者至菜單管理下架。</p><button type="button" id="availability-refresh">重新整理</button><div id="availability-list"></div></section>
+<section id="close-report" class="panel" hidden><h2>每日收班核對</h2><form id="close-report-form" class="form"><label>營業日期<input type="date" name="day" required></label><button type="submit" class="primary">查詢收班報表</button></form><p id="close-report-status" role="status"></p><div id="close-report-result"></div><label>盤點當日現金實收（選填；請先扣除備用金）<input id="counted-cash" type="number" min="0" step="1"></label><p id="cash-difference" role="status"></p><p class="muted">盤點金額用於本次核對與匯出。切換至本頁及交易異動後會更新報表；停留此頁每 15 秒更新，匯出前再核對最新資料。</p><button type="button" id="close-download" disabled>下載收班 CSV 報表</button></section>
+<section id="dining" class="panel" hidden><h2>桌號 QR 點餐</h2>
+<p>每桌設定一次固定 QR Code，列印貼在桌上。客人掃碼直接點餐，店員確認後依桌號製作、送餐。結帳後原碼可繼續使用。</p>
+<form id="dining-open-form" class="form"><label>桌號<input name="table" maxlength="20" placeholder="例如 1、A1" required></label><button type="submit" class="primary">建立桌號／顯示固定 QR Code</button></form>
+<p id="dining-status" role="status"></p><button type="button" id="dining-refresh">重新整理</button>
+<div id="dining-qr" class="panel"></div><h3>桌號與固定 QR Code</h3><div id="dining-tables"></div></section>
+<section id="staff-admin" class="panel" hidden><h2>員工管理</h2>
+<details><summary>修改管理者自己的密碼</summary><form id="own-password-form" class="form">
+<label>目前密碼<input type="password" name="current" autocomplete="current-password" required></label>
+<label>新密碼<input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+<label>再次輸入新密碼<input type="password" name="confirm" autocomplete="new-password" minlength="12" maxlength="72" required></label>
+<button class="primary" type="submit">修改自己的密碼</button><p id="own-password-status" role="status"></p></form></details>
+<div class="row"><h3>帳號清單</h3><button type="button" id="staff-refresh">重新整理</button></div>
+<p id="staff-status" role="status"></p><div id="staff-list"></div>
+<h3 id="staff-editor-title">新增員工</h3><form id="staff-form" class="form">
+<input type="hidden" name="id"><label>員工姓名<input name="name" maxlength="60" autocomplete="name"></label>
+<label>員工電子郵件<input type="email" name="email" maxlength="254" autocomplete="off" required></label>
+<label id="staff-password-label">初始密碼／重設密碼<input type="password" name="password" autocomplete="new-password" minlength="12" maxlength="72"></label>
+<p class="muted">新增帳號需設定密碼；修改既有帳號時，密碼留白代表保留原密碼。至少 12 個字元，最多 72 位元組。</p>
+<label>權限<select name="role"><option value="staff">櫃台</option><option value="kitchen">廚房</option></select></label>
+<div class="actions"><button class="primary" type="submit">儲存員工</button><button type="button" id="staff-cancel">取消修改／新增另一位</button></div>
+<p id="staff-edit-status" role="status"></p></form></section>
+<section id="revenue" class="panel" hidden><h2>營收統計</h2><form id="report-form" class="form"><div class="grid"><label>統計期間<select name="grain"><option value="day">日</option><option value="month">月</option><option value="year">年</option></select></label>
+<label>期間內的日期<input type="date" name="date" required></label></div><button class="primary" type="submit">查詢營收</button></form><p id="revenue-result" role="status"></p><div id="revenue-details"></div></section>
+</div><aside id="workspace-sidebar" hidden><section id="booking-overview" class="panel" hidden aria-labelledby="booking-overview-title">
+<div class="row"><h2 id="booking-overview-title">近期訂位</h2><button type="button" id="booking-overview-refresh">重新整理</button></div>
+<div id="booking-overview-list" class="booking-overview-list"></div>
+<p id="booking-overview-status" class="muted" role="status"></p>
+</section>
+<section id="guest-review-overview" class="panel" aria-labelledby="guest-review-title">
+<div class="row"><h2 id="guest-review-title">客人點餐待確認</h2><button type="button" id="guest-pending-refresh">重新整理</button></div>
+<p id="guest-review-status" role="status"></p><div id="guest-order-pending"></div>
+</section></aside>
+</div></div></main>
+<script src="restaurant-config.js"></script>
+<script src="assets/starter-menu.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/restaurant.js"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+Source: https://github.com/google/fonts/tree/main/ofl/yujimai
+Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+This license is copied below, and is also available with a FAQ at:
+http://scripts.sil.org/OFL
+
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded, 
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.
+-->
+</html>
