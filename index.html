@@ -120,11 +120,53 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
  .workspace-columns:has(#order:not([hidden])) #workspace-sidebar{position:static;max-height:none;overflow:visible;grid-template-columns:repeat(2,minmax(0,1fr));padding-top:0}
 }
 @media(max-width:767px){.checkout-options{grid-template-columns:1fr}.checkout-actions button{margin-bottom:8px}}
+
+.online-links{display:flex;flex-wrap:wrap;gap:8px}
+#online-public,#online-tracking{margin-top:20px}
+.online-layout{display:grid;gap:16px;align-items:start}
+.online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
+#online-dishes h3{overflow-wrap:anywhere}
+#online-dishes button{margin-top:8px}
+#online-basket .actions,#online-queue .actions{display:flex;gap:6px;flex-wrap:wrap}
+#online-staff{padding:12px}
+#online-staff h2{font-size:20px;margin:0}
+#online-queue{max-height:36vh;overflow-y:auto;overflow-wrap:anywhere}
+@media(max-width:767px){.online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1fr)}}
 </style>
 <link rel="stylesheet" href="assets/restaurant.css">
-<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><a class="mode" href="?view=menu">客人菜單</a></nav></header>
+<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a><a class="mode" href="?view=reserve">線上訂位</a><a class="mode" href="?view=pickup">線上點餐</a></div></nav></header>
 <main class="wrap"><section class="farm-cover" aria-label="餐廳封面"><div class="farm-copy"><p data-restaurant-name>小樂義義式餐廰</p><span>義大利麵 · 燉飯 · 手作甜點</span><address style="font-style:normal;margin-top:12px;color:inherit">300新竹市東區金城一路71巷1號</address></div><img alt="義式料理與飲品餐桌" width="2048" height="1638" src="assets/cover.jpg"></section><section id="guest-menu" hidden><h1 id="guest-menu-title">小樂義義式餐廰菜單</h1><div id="guest-categories" class="tabs"></div><p id="guest-status" role="status"></p><p class="menu-notes">餐點附手工麵包。需要加辣可在點餐備註填寫小辣、中辣或大辣。</p>
-<div id="guest-dishes" class="dishes"></div></section><div id="staff-heading"><div class="eyebrow">店員工作台</div><h1>點餐與訂位</h1></div><section id="guest-order" hidden><h1 id="guest-table-title">本桌點餐</h1><p id="guest-order-state" role="status">載入中…</p>
+<div id="guest-dishes" class="dishes"></div></section><section id="online-public" hidden>
+<div class="row"><h1 id="online-title">線上訂位</h1><a href="?view=menu">返回菜單</a></div>
+<p id="online-intro" class="muted"></p>
+<p id="online-load-status" role="status"></p>
+<div class="online-layout">
+<section class="panel" id="online-menu-panel" hidden aria-labelledby="online-menu-title">
+<h2 id="online-menu-title">選擇餐點</h2>
+<div id="online-categories" class="tabs"></div><div id="online-dishes" class="dishes"></div>
+</section>
+<form id="online-form" class="panel">
+<div id="online-basket-panel" hidden><h2 id="online-basket-title">外帶清單</h2><div id="online-basket"></div><p><strong id="online-total"></strong></p></div>
+<div class="grid" id="online-contact-fields">
+<label id="online-day-label">日期<input name="day" type="date" required></label>
+<label id="online-time-label">時間<select name="slot" required></select></label>
+<label>姓名<input name="name" autocomplete="name" maxlength="50" required></label>
+<label>聯絡電話<input name="phone" type="tel" autocomplete="tel" maxlength="30" required></label>
+<label id="online-party">人數<input name="guests" type="number" min="1" max="8" value="2" required></label>
+<label>備註（選填）<input name="note" maxlength="200"></label>
+</div>
+<p id="online-preorder-context" hidden></p>
+<label id="online-preorder-note" hidden>預點餐備註（選填）<input name="preorder_note" maxlength="200"></label>
+<button id="online-preorder-back" type="button" hidden>返回訂位</button>
+<button id="online-submit" type="submit" class="primary" disabled>送出申請</button>
+<p id="online-send-status" role="status"></p>
+</form>
+</div>
+<section class="panel" id="online-tracking" hidden>
+<div class="row"><h2>申請進度</h2><button type="button" id="online-status-refresh">更新進度</button></div>
+<div id="online-status" role="status"></div>
+</section>
+</section><div id="staff-heading"><div class="eyebrow">店員工作台</div><h1>點餐與訂位</h1></div><section id="guest-order" hidden><h1 id="guest-table-title">本桌點餐</h1><p id="guest-order-state" role="status">載入中…</p>
 <button type="button" id="guest-new-visit" hidden>開始新的用餐</button><div class="tabs" id="guest-order-categories"></div><div id="guest-order-dishes" class="dishes"></div>
 <section class="panel"><h2>這次要點的餐點</h2><div id="guest-basket"></div><strong id="guest-total"></strong>
 <label>本次共通備註<textarea id="guest-note" maxlength="300" placeholder="例如先上飲料、分開上菜；個別需求請在每筆餐點設定"></textarea></label>
@@ -193,7 +235,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <label>備註<input name="note" maxlength="200"></label>
 <p class="muted">週一店休。請先確認有座位，再登記電話訂位。</p>
 <button class="primary">儲存電話訂位</button><div class="message" role="status"></div>
-</form></details><div id="booking-list"></div></section>
+</form></details><label>查詢訂位編號<input id="booking-number-search" type="search" inputmode="numeric" placeholder="輸入數字編號"></label><div id="booking-list"></div></section>
 <section id="sales" class="panel" hidden><div class="row"><h2>今日交易</h2><button data-refresh="sales">重新整理</button></div><div id="sale-list"></div></section>
 <section id="open-tables" class="panel" hidden>
 <div class="row"><h2>待結帳桌單</h2><button type="button" id="tables-refresh">重新整理</button></div>
@@ -234,6 +276,10 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <div id="booking-overview-list" class="booking-overview-list"></div>
 <p id="booking-overview-status" class="muted" role="status"></p>
 </section>
+<section id="online-staff" class="panel" aria-labelledby="online-staff-title">
+<div class="row"><h2 id="online-staff-title">線上申請待確認</h2><button type="button" id="online-staff-refresh">重新整理</button></div>
+<p id="online-staff-status" role="status"></p><div id="online-queue"></div>
+</section>
 <section id="guest-review-overview" class="panel" aria-labelledby="guest-review-title">
 <div class="row"><h2 id="guest-review-title">客人點餐待確認</h2><button type="button" id="guest-pending-refresh">重新整理</button></div>
 <p id="guest-review-status" role="status"></p><div id="guest-order-pending"></div>
@@ -242,7 +288,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <script src="restaurant-config.js"></script>
 <script src="assets/starter-menu.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/restaurant.js"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+<script src="assets/restaurant.js?v=online-2"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
 Source: https://github.com/google/fonts/tree/main/ofl/yujimai
 Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
 

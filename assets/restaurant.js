@@ -82,7 +82,15 @@ async function api(path,data) {
     const rows=await checked(db.from('restaurant_bookings')
       .select('id,booking_date,booking_time,guests,guest_name,phone,note,status,table_label')
       .is('deleted_at',null).gte('booking_date',today).order('booking_date').order('booking_time'));
-    return rows.map(row=>({...row,day:row.booking_date,slot:row.booking_time.slice(0,5),name:row.guest_name}));
+    const onlineBookings=new Map();
+    for(let i=0;i<rows.length;i+=200){
+      const {data,error}=await db.rpc('restaurant_booking_preorders',{booking_ids:rows.slice(i,i+200).map(row=>row.id)});
+      if(error?.code==='PGRST202')break;
+      if(error)throw Error(error.message);
+      for(const record of data)onlineBookings.set(record.id,record);
+    }
+    return rows.map(row=>({...row,day:row.booking_date,slot:row.booking_time.slice(0,5),
+      name:row.guest_name,online:onlineBookings.get(row.id)}));
   }
   if(path==='phone-reservations') {
     const {day,slot,guests,name,phone,note,table_label}=data;
@@ -258,7 +266,9 @@ function renderBookingOverview(records) {
       node('span',statuses[booking.status]??booking.status));
     const details=[booking.name,booking.phone,booking.table_label?'桌號 '+booking.table_label:'尚未排桌'];
     if(booking.note) details.push('備註 '+booking.note);
-    line.append(heading,node('p',details.join(' · ')),bookingActions(booking));
+    line.append(heading,node('p',details.join(' · ')));
+    appendBookingPreorder(line,booking);
+    line.append(bookingActions(booking));
     list.append(line);
   }
   if(!list.children.length) list.append(node('p','目前沒有近期訂位。','muted'));
@@ -284,14 +294,17 @@ async function refresh(tab) {
       const records=await api('reservations');
       renderBookingOverview(records);
       list.replaceChildren();
-      if(!records.length) list.append(node('p','目前沒有訂位。'));
-      for(const booking of records) {
+      const number=byId('booking-number-search').value.trim();
+      const matches=records.filter(row=>!number||String(row.online?.booking_number)===number);
+      if(!matches.length)list.append(node('p',number?'查無這個訂位編號。':'目前沒有訂位。'));
+      for(const booking of matches) {
         const line=node('div',undefined,'line');
         const heading=node('div',undefined,'row');
         heading.append(node('strong',booking.day+' '+booking.slot+' · '+booking.guests+' 位'),node('span',statuses[booking.status]));
         line.append(heading,node('p',booking.name+' · '+booking.phone+(booking.table_label?' · 桌號 '+booking.table_label:'')+(booking.note?' · '+booking.note:'')));
+        appendBookingPreorder(line,booking);
         const actions=booking.status==='pending' ? [['確認訂位','confirmed'],['取消','cancelled']] :
-          booking.status==='confirmed' ? [['標記到店','arrived'],['取消','cancelled']] : [];
+          booking.status==='confirmed' ? (booking.online?[['取消','cancelled']]:[['標記到店','arrived'],['取消','cancelled']]) : [];
         const controls=node('div',undefined,'tabs');
         for(const [label,status] of actions) {
           controls.append(button(label,async()=>{
@@ -411,6 +424,8 @@ async function enter(session) {
     byId('booking-overview').hidden=false;
     byId('booking-overview-status').textContent='載入訂位中…';
     void refreshBookingOverview();
+    void refreshOnlineQueue();
+    setInterval(()=>{if(!document.hidden)void refreshOnlineQueue();},15000);
     void recoverBlockedDraft();
     void refreshDining();
     if(!diningTimer)diningTimer=setInterval(()=>{if(document.visibilityState==='visible')void refreshDining();},15000);
@@ -441,6 +456,7 @@ byId('sign-out').addEventListener('click',async()=>{
 });
 async function init() {
   try {
+    if(isOnlinePage){await showOnlinePage();return;}
     if(!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       if(isDiningPage){
         byId('guest-order').hidden=false;login.hidden=true;byId('staff-heading').hidden=true;
@@ -461,7 +477,7 @@ async function init() {
     });
     const {session}=await checked(db.auth.getSession());
     if(session) await enter(session);
-  } catch(error) {(isDiningPage?byId('guest-order-state'):isGuestPage?byId('guest-status'):loginStatus).textContent=error.message;}
+  } catch(error) {(isOnlinePage?byId('online-load-status'):isDiningPage?byId('guest-order-state'):isGuestPage?byId('guest-status'):loginStatus).textContent=error.message;}
   finally {loginButton.disabled=!db;}
 }
 let staffRole;
@@ -470,7 +486,10 @@ const itemsObject=items=>Object.fromEntries(items.map(({id,qty})=>[id,qty]));
 const menuBucket='restaurant-menu-images';
 const diningKey=new URLSearchParams(location.hash.slice(1)).get('dine');
 const isDiningPage=diningKey!==null;
-const isGuestPage=new URLSearchParams(location.search).get('view')==='menu';
+const pageView=new URLSearchParams(location.search).get('view');
+const isGuestPage=pageView==='menu';
+const isOnlinePage=!isDiningPage&&['reserve','pickup'].includes(pageView);
+const isOnlinePickup=pageView==='pickup';
 const ticketKey=()=>pendingKey+':kitchen';
 const setTicket=ticket=>{
   kitchenTicket=ticket;
@@ -900,8 +919,64 @@ function field(parent,labelText,type,name,value,options) {
   parent.append(label);
   return control;
 }
+function appendBookingPreorder(card,booking) {
+  if(!booking.online)return;
+  card.append(node('strong','訂位編號 '+booking.online.booking_number));
+  if(booking.online.lines.length){
+    for(const item of booking.online.lines){
+      card.append(node('p','預點餐 '+item.name+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')));
+    }
+    if(booking.online.note)card.append(node('p','預點餐備註 '+booking.online.note));
+  }
+}
+
+byId('booking-number-search').addEventListener('search',()=>void refresh('bookings'));
+byId('booking-number-search').addEventListener('keydown',event=>{
+  if(event.key==='Enter'){event.preventDefault();void refresh('bookings');}
+});
+
+function openBookingArrival(booking) {
+  const {modal,editor,actions,message,save}=editDialog('訂位 '+booking.online.booking_number+' 報到');
+  appendBookingPreorder(editor,booking);
+  const hasFood=booking.online.lines.length>0;
+  const table=field(editor,hasFood?'出餐桌號':'桌號（選填）',hasFood?'text':'optional','table',booking.table_label);
+  table.maxLength=20;
+  save.textContent=hasFood?'報到並送廚房':'確認報到';
+  editor.append(actions,message);
+  async function arrive(sendPreorder) {
+    if(save.disabled)return;
+    save.disabled=true;
+    manual.disabled=true;
+    try{
+      await checked(db.rpc('restaurant_booking_arrive',{
+        request_id:booking.id,table_name:table.value,send_preorder:sendPreorder,expected_preorder:hasFood
+      }));
+      modal.close();
+      if(!byId('bookings').hidden)await refresh('bookings');
+      else await refreshBookingOverview();
+      notice.textContent=sendPreorder&&hasFood?'已報到，預點餐已送廚房。':'已報到。';
+    }catch(error){
+      message.textContent=error.message;
+      if(/售完|下架|餐點或價格已變更|已有待結帳單/.test(error.message))manual.hidden=false;
+    }finally{save.disabled=false;manual.disabled=false;}
+  }
+  const manual=button('僅報到，餐點由櫃台處理',()=>{
+    if(confirm('確定由櫃台另外處理這筆預點餐？'))void arrive(false);
+  });
+  manual.hidden=true;
+  actions.append(manual);
+  editor.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(editor.reportValidity())void arrive(true);
+  });
+  modal.showModal();
+}
+
 function bookingActions(booking) {
   const actions=node('div',undefined,'tabs');
+  if(booking.online&&booking.status==='confirmed'&&booking.day===nowInTaipei().slice(0,10)){
+    actions.append(button(booking.online.lines.length?'報到並送廚房':'報到',()=>openBookingArrival(booking)));
+  }
   actions.append(button('修改',()=>editBooking(booking)),button('刪除',async event=>{
     if(!confirm('刪除 '+booking.day+' '+booking.slot+' '+booking.name+' 的訂位？')) return;
     const control=event.currentTarget;
@@ -924,7 +999,9 @@ function editBooking(booking) {
   field(grid,'姓名','text','guest_name',booking.guest_name).maxLength=80;
   field(grid,'電話','tel','phone',booking.phone).maxLength=30;
   field(grid,'桌號（選填）','optional','table_label',booking.table_label).maxLength=20;
-  field(grid,'狀態','text','status',booking.status,[['confirmed','已確認'],['arrived','已到店'],['cancelled','已取消']]);
+  const statusOptions=[['confirmed','已確認'],['cancelled','已取消']];
+  if(!booking.online||booking.status==='arrived')statusOptions.splice(1,0,['arrived','已到店']);
+  field(grid,'狀態','text','status',booking.status,statusOptions);
   field(grid,'備註（選填）','optional','note',booking.note).maxLength=200;
   editor.append(grid,actions,message);
   editor.addEventListener('submit',async event=>{
@@ -1681,5 +1758,369 @@ async function enrichSales(sales){
  }return sales;
 }
 
-init();
+// Public reservations and pickup orders share the staff review queue.
+const onlineForm=byId('online-form');
+const onlineSubmit=byId('online-submit');
+const onlineKind=isOnlinePickup?'pickup':'booking';
+const onlineStorageKey='restaurant-online:'+SUPABASE_URL+':'+onlineKind;
+let onlineMenu=[];
+let onlineBasket=[];
+let onlineCategory='全部';
+let onlineDraft=null;
+let preorderBooking=null;
+const choosingOnlineFood=()=>isOnlinePickup||!!preorderBooking;
+let onlineReady=false;
+let onlineSending=false;
+let onlineQueueBusy=false;
+let onlineReviewBusy=false;
+let onlineTrackingBusy=false;
+let onlineTrackingAgain=false;
 
+function onlineTimeOptions() {
+  const day=onlineForm.elements.day.value;
+  const now=nowInTaipei();
+  const selected=onlineForm.elements.slot.value;
+  const slots=[];
+  if(day && new Date(day+'T00:00:00Z').getUTCDay()!==1) {
+    for(const [start,end] of [[690,870],[1050,1260]]) {
+      for(let minutes=start;minutes<end;minutes+=15) {
+        const slot=String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');
+        if(day+'T'+slot>now.slice(0,16))slots.push(new Option(slot,slot));
+      }
+    }
+  }
+  onlineForm.elements.slot.replaceChildren(new Option(slots.length?'請選擇時間':'當天沒有可選時段',''),...slots);
+  if(slots.some(slot=>slot.value===selected))onlineForm.elements.slot.value=selected;
+}
+
+function storeOnlineDraft(draft) {
+  onlineDraft=draft;
+  try {
+    if(draft)sessionStorage.setItem(onlineStorageKey+':draft',JSON.stringify(draft));
+    else sessionStorage.removeItem(onlineStorageKey+':draft');
+  }catch{}
+}
+
+function updateOnlineControls() {
+  const frozen=!!onlineDraft;
+  for(const field of onlineForm.querySelectorAll('input,select')){
+    field.disabled=onlineSending||frozen||(!!preorderBooking&&byId('online-contact-fields').contains(field));
+  }
+  byId('online-preorder-back').disabled=onlineSending||frozen;
+  onlineSubmit.disabled=!onlineReady||onlineSending||(choosingOnlineFood()&&!onlineBasket.length&&!frozen);
+  onlineSubmit.textContent=frozen?'重試送出原申請':preorderBooking?'送出預點餐':isOnlinePickup?'送出外帶點餐':'送出訂位申請';
+}
+
+function renderOnlineBasket() {
+  const list=byId('online-basket');
+  list.replaceChildren();
+  const prices=onlineDraft?.expected_prices;
+  let total=0;
+  for(const item of onlineBasket) {
+    const dish=onlineMenu.find(d=>d.id===item.menu_id);
+    const price=prices?.[item.menu_id]??dish?.price??0;
+    total+=price*item.qty;
+    const row=node('div',undefined,'line');
+    row.append(node('strong',(dish?.name??'原申請餐點')+' × '+item.qty+' · '+money(price*item.qty)));
+    if(item.note)row.append(node('p',item.note));
+    if(!onlineDraft&&!onlineSending) {
+      const actions=node('div',undefined,'actions');
+      if(dish&&!soldOut(dish))actions.append(button('修改需求',()=>pickOnlineDish(dish,item)));
+      actions.append(button('移除',()=>{
+        onlineBasket=onlineBasket.filter(line=>line.line_id!==item.line_id);
+        renderOnlineBasket();
+      }));
+      row.append(actions);
+    }
+    list.append(row);
+  }
+  if(!onlineBasket.length)list.append(node('p','請從菜單選擇餐點。','muted'));
+  byId('online-total').textContent='預估小計 '+money(total);
+  updateOnlineControls();
+}
+
+function pickOnlineDish(dish,existing=null) {
+  if(onlineSending||onlineDraft||soldOut(dish))return;
+  selectVariant(dish,existing,row=>{
+    onlineBasket=upsertVariant(onlineBasket,row,existing?.line_id);
+    renderOnlineBasket();
+  });
+}
+
+function renderOnlineMenu() {
+  const tabs=byId('online-categories');
+  tabs.replaceChildren();
+  for(const category of ['全部',...new Set(onlineMenu.map(d=>d.category))]) {
+    const tab=button(category,()=>{onlineCategory=category;renderOnlineMenu();});
+    tab.setAttribute('aria-pressed',String(category===onlineCategory));
+    tabs.append(tab);
+  }
+  const grid=byId('online-dishes');
+  grid.replaceChildren();
+  for(const dish of onlineMenu.filter(d=>onlineCategory==='全部'||d.category===onlineCategory)) {
+    const card=node('article',undefined,'panel guest-card');
+    const photo=picture(dish);
+    if(photo)card.append(photo);
+    card.append(node('h3',dish.name),node('strong',money(dish.price)));
+    const add=button(soldOut(dish)?'今日售完':'選擇餐點',()=>pickOnlineDish(dish));
+    add.disabled=soldOut(dish)||onlineSending||!!onlineDraft;
+    card.append(add);
+    grid.append(card);
+  }
+  if(!grid.children.length)grid.append(node('p','目前沒有供應中的餐點。','muted'));
+}
+
+function readOnlineHistory() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(onlineStorageKey+':history'));
+    return Array.isArray(saved)?saved.filter(id=>typeof id==='string'&&/^[0-9a-f-]{36}$/i.test(id)).slice(0,10):[];
+  }catch{return [];}
+}
+
+let currentOnlineRequest=null;
+async function refreshOnlineStatus() {
+  const ids=[...new Set([currentOnlineRequest,...readOnlineHistory()].filter(Boolean))].slice(0,10);
+  if(!ids.length)return;
+  if(onlineTrackingBusy){onlineTrackingAgain=true;return;}
+  onlineTrackingBusy=true;
+  byId('online-tracking').hidden=false;
+  const list=byId('online-status');
+  try {
+    const results=await Promise.all(ids.map(request_id=>checked(db.rpc('restaurant_online_status',{request_id}))));
+    list.replaceChildren();
+    const labels={pending:'等待店員確認',accepted:'店家已確認',rejected:'店家未接受',expired:'時段已過',
+      cancelled:'已取消',arrived:'已到店',preparing:'製作中',served:'餐點已備妥',paid:'已結帳'};
+    for(const row of results.filter(Boolean)) {
+      const item=node('div',undefined,'line');
+      item.append(node('strong',labels[row.status]??'請聯絡店家'));
+      item.append(node('p',row.scheduled_at.replace('T',' ').slice(0,16)+' · 編號 '+(row.booking_number??row.id.slice(0,8).toUpperCase())));
+      if(row.kind==='booking')item.append(node('p',row.guests+' 位'));
+      for(const line of row.lines)item.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
+      if(row.can_preorder&&!preorderBooking&&!onlineDraft){
+        item.append(button('這筆訂位先點餐',()=>void beginPreorder(row)));
+      }
+      list.append(item);
+    }
+    if(!list.children.length)list.append(node('p','查無申請紀錄。'));
+  }catch(error){list.replaceChildren(node('p','目前無法更新進度。'+error.message));}
+  finally{
+    onlineTrackingBusy=false;
+    if(onlineTrackingAgain){onlineTrackingAgain=false;void refreshOnlineStatus();}
+  }
+}
+
+async function fetchOnlineMenu() {
+  const dishes=await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date')
+    .eq('active',true).order('category').order('name'));
+  return isOnlinePickup?dishes.filter(dish=>!dish.name.includes('限內用')&&dish.category!=='內用加點'):dishes;
+}
+
+function showPreorderFields() {
+  byId('online-contact-fields').hidden=!isOnlinePickup&&!!preorderBooking;
+  byId('online-menu-panel').hidden=!choosingOnlineFood();
+  byId('online-basket-panel').hidden=!choosingOnlineFood();
+  byId('online-basket-title').textContent=preorderBooking?'預點餐清單':'外帶清單';
+  byId('online-preorder-note').hidden=!preorderBooking;
+  byId('online-preorder-back').hidden=!preorderBooking;
+  byId('online-preorder-context').hidden=!preorderBooking;
+  byId('online-preorder-context').textContent=preorderBooking
+    ?'訂位 '+preorderBooking.booking_number+' 的預點餐。到店報到後由店員安排製作。':'';
+  if(choosingOnlineFood()){renderOnlineMenu();renderOnlineBasket();}
+  else updateOnlineControls();
+}
+
+async function beginPreorder(booking) {
+  if(onlineSending||onlineDraft||preorderBooking)return;
+  onlineSending=true;
+  updateOnlineControls();
+  try {
+    onlineMenu=await fetchOnlineMenu();
+    preorderBooking=booking;
+    onlineBasket=[];
+    onlineCategory='全部';
+    onlineForm.elements.preorder_note.value='';
+    byId('online-send-status').textContent='';
+    byId('online-menu-panel').hidden=false;
+    byId('online-menu-panel').scrollIntoView({block:'start'});
+  }catch(error){byId('online-load-status').textContent=error.message;}
+  finally{
+    onlineSending=false;
+    showPreorderFields();
+  }
+}
+
+byId('online-preorder-back').addEventListener('click',()=>{
+  if(onlineDraft||onlineSending)return;
+  if(onlineBasket.length&&!confirm('返回訂位並清空未送出的預點餐？'))return;
+  preorderBooking=null;
+  onlineBasket=[];
+  showPreorderFields();
+  void refreshOnlineStatus();
+});
+
+async function showOnlinePage() {
+  login.hidden=true;
+  byId('staff-heading').hidden=true;
+  byId('online-public').hidden=false;
+  byId('online-title').textContent=isOnlinePickup?'線上點餐・預約外帶':'線上訂位';
+  byId('online-intro').textContent=isOnlinePickup
+    ?'送出後請在本頁查看確認結果。店家確認後，依預約時間到店取餐付款。'
+    :'送出後會取得訂位編號，可接著預點餐。請等候店家確認，到店時出示編號。';
+  if(isOnlinePickup){
+    byId('online-day-label').firstChild.textContent='取餐日期';
+    byId('online-time-label').firstChild.textContent='取餐時間';
+    byId('online-party').hidden=true;
+    onlineForm.elements.guests.required=false;
+    byId('online-menu-panel').hidden=false;
+    byId('online-basket-panel').hidden=false;
+  }
+  const today=nowInTaipei().slice(0,10);
+  onlineForm.elements.day.min=today;
+  onlineForm.elements.day.max=new Date(Date.parse(today+'T00:00:00Z')+30*86400000).toISOString().slice(0,10);
+  onlineForm.elements.day.value=today;
+  onlineTimeOptions();
+  if(!SUPABASE_URL||!SUPABASE_PUBLISHABLE_KEY){
+    byId('online-load-status').textContent='店家尚未啟用線上申請。';
+    return;
+  }
+  if(!window.supabase)throw Error('無法連線，請重新整理。');
+  db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'restaurant-online-public'}
+  });
+  if(isOnlinePickup)onlineMenu=await fetchOnlineMenu();
+  try {
+    const draft=JSON.parse(sessionStorage.getItem(onlineStorageKey+':draft'));
+    if(draft?.request_id&&draft.request_kind===onlineKind){
+      onlineDraft=draft;
+      onlineBasket=draft.request_items;
+      byId('online-send-status').textContent='上次送出結果待確認，請重試原申請。';
+    }else if(draft?.request_id&&draft.request_kind==='preorder'&&!isOnlinePickup){
+      onlineDraft=draft;
+      preorderBooking={id:draft.request_id,booking_number:draft.booking_number};
+      onlineBasket=draft.request_items;
+      onlineMenu=await fetchOnlineMenu();
+      byId('online-send-status').textContent='上次預點餐結果待確認，請重試原申請。';
+    }
+  }catch{}
+  onlineReady=true;
+  showPreorderFields();
+  void refreshOnlineStatus();
+  setInterval(()=>{if(!document.hidden)void refreshOnlineStatus();},15000);
+}
+
+onlineForm.elements.day.addEventListener('change',onlineTimeOptions);
+onlineForm.addEventListener('submit',async event=>{
+  event.preventDefault();
+  if(!onlineReady||onlineSending)return;
+  if(!onlineDraft) {
+    if(!onlineForm.reportValidity()||(choosingOnlineFood()&&!onlineBasket.length))return;
+    const values=Object.fromEntries(new FormData(onlineForm));
+    const expectedPrices=Object.fromEntries(onlineMenu.filter(d=>onlineBasket.some(item=>item.menu_id===d.id)).map(d=>[d.id,d.price]));
+    if(preorderBooking){
+      storeOnlineDraft({request_id:preorderBooking.id,request_kind:'preorder',
+        booking_number:preorderBooking.booking_number,request_items:variantRequest(onlineBasket),
+        expected_prices:expectedPrices,order_note:values.preorder_note});
+    }else storeOnlineDraft({
+      request_id:uniqueId(),request_kind:onlineKind,requested_day:values.day,requested_time:values.slot,
+      contact_name:values.name,contact_phone:values.phone,party_size:isOnlinePickup?null:Number(values.guests),
+      request_note:values.note,request_items:variantRequest(onlineBasket),expected_prices:expectedPrices
+    });
+  }
+  onlineSending=true;
+  updateOnlineControls();
+  if(choosingOnlineFood()){renderOnlineMenu();renderOnlineBasket();}
+  const status=byId('online-send-status');
+  status.textContent='送出中…';
+  try {
+    const wasPreorder=onlineDraft.request_kind==='preorder';
+    if(wasPreorder){
+      const {request_id,request_items,expected_prices,order_note}=onlineDraft;
+      currentOnlineRequest=await checked(db.rpc('restaurant_booking_preorder',{request_id,request_items,expected_prices,order_note}));
+      preorderBooking=null;
+    }else{
+      currentOnlineRequest=await checked(db.rpc('restaurant_online_submit',onlineDraft));
+    }
+    try {localStorage.setItem(onlineStorageKey+':history',JSON.stringify([...new Set([currentOnlineRequest,...readOnlineHistory()])].slice(0,10)));}catch{}
+    storeOnlineDraft(null);
+    onlineBasket=[];
+    onlineForm.elements.name.value='';
+    onlineForm.elements.phone.value='';
+    onlineForm.elements.note.value='';
+    onlineTimeOptions();
+    status.textContent=wasPreorder?'預點餐已送出。':'已收到申請，請查看下方進度，等候店家確認。';
+    showPreorderFields();
+    await refreshOnlineStatus();
+    if(!isOnlinePickup)byId('online-tracking').scrollIntoView({block:'start'});
+  }catch(error){
+    if(['22023','23514','P0001','42501','PGRST202'].includes(error.code)){
+      storeOnlineDraft(null);
+      status.textContent=error.code==='PGRST202'?'店家尚未啟用線上申請。':error.message;
+    }else status.textContent='送出結果待確認，請按「重試送出原申請」。';
+  }finally{
+    onlineSending=false;
+    updateOnlineControls();
+    if(choosingOnlineFood()){renderOnlineMenu();renderOnlineBasket();}
+  }
+});
+byId('online-status-refresh').addEventListener('click',refreshOnlineStatus);
+
+async function refreshOnlineQueue() {
+  if(onlineQueueBusy||onlineReviewBusy||!['owner','staff'].includes(staffRole))return;
+  // Preserve a table number that the cashier is entering during polling.
+  if(byId('online-queue').contains(document.activeElement)&&document.activeElement?.tagName==='INPUT')return;
+  onlineQueueBusy=true;
+  const status=byId('online-staff-status');
+  const list=byId('online-queue');
+  try {
+    const rows=await checked(db.rpc('restaurant_online_pending'));
+    if(onlineReviewBusy||list.contains(document.activeElement)&&document.activeElement?.tagName==='INPUT')return;
+    list.replaceChildren();
+    byId('online-staff-title').textContent='線上申請待確認'+(rows.length?'（'+rows.length+'）':'');
+    byId('online-staff').classList.toggle('has-pending',rows.length>0);
+    for(const row of rows){
+      const card=node('div',undefined,'line');
+      const booking=row.kind==='booking';
+      card.append(node('strong',(booking?'訂位':'預約外帶')+' · '+row.scheduled_at.replace('T',' ').slice(0,16)));
+      card.append(node('p',row.guest_name+' · '+row.phone+(booking?' · '+row.guests+' 位':' · '+row.id.slice(0,8).toUpperCase())));
+      if(booking)card.append(node('strong','訂位編號 '+row.booking_number));
+      for(const line of row.priced_lines)card.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
+      if(!booking)card.append(node('p','小計 '+money(row.priced_lines.reduce((sum,line)=>sum+line.price*line.qty,0))));
+      if(row.note)card.append(node('p','備註 '+row.note));
+      if(booking&&row.preorder_note)card.append(node('p','預點餐備註 '+row.preorder_note));
+      const table=booking?field(card,'安排桌號（選填）','optional','table_name',''):null;
+      if(table)table.maxLength=20;
+      const actions=node('div',undefined,'actions');
+      for(const accept of [true,false]){
+        actions.append(button(accept?(booking?'確認訂位':'接單並送廚房'):'拒絕申請',async()=>{
+          if(onlineReviewBusy||!confirm(accept?'確認這筆線上申請？':'確定拒絕這筆申請？'))return;
+          onlineReviewBusy=true;
+          for(const control of actions.children)control.disabled=true;
+          try {
+            await checked(db.rpc('restaurant_online_review',{request_id:row.id,accept_request:accept,table_name:table?.value??null}));
+            card.remove();
+            status.textContent=accept?(booking?'訂位已確認。':'外帶單已送廚房，可至待結帳查詢。'):'已拒絕申請。';
+            if(booking&&!byId('bookings').hidden)await refresh('bookings');
+            else if(booking)void refreshBookingOverview();
+            else if(!byId('open-tables').hidden)void loadOpenTables();
+          }catch(error){
+            status.textContent=error.message;
+            for(const control of actions.children)control.disabled=false;
+          }finally{
+            onlineReviewBusy=false;
+            void refreshOnlineQueue();
+          }
+        }));
+      }
+      card.append(actions);
+      list.append(card);
+    }
+    if(!list.children.length)list.append(node('p','目前沒有待確認的線上申請。','muted'));
+    if(status.dataset.failed){status.textContent='';delete status.dataset.failed;}
+  }catch(error){
+    status.textContent=error.code==='PGRST202'?'線上申請尚未啟用。':error.message;
+    status.dataset.failed='true';
+  }finally{onlineQueueBusy=false;}
+}
+byId('online-staff-refresh').addEventListener('click',refreshOnlineQueue);
+
+init();
