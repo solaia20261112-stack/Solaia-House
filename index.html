@@ -144,6 +144,31 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 .online-alert[hidden]{display:none}
 #online-queue{max-height:36vh;overflow-y:auto;overflow-wrap:anywhere}
 @media(max-width:767px){.online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1fr)}}
+#order-slip-dialog{width:min(100% - 24px,380px);max-height:90dvh;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--ink)}
+#order-slip-dialog::backdrop{background:#0007}
+#order-slip-dialog h2{margin:0 0 10px}
+#order-slip-preview{display:grid;gap:12px;margin-block:12px}
+.order-slip{box-sizing:border-box;width:72mm;max-width:100%;padding:2mm 1mm;margin:0 auto;color:#000;background:#fff;font:13px/1.35 system-ui,sans-serif;overflow-wrap:anywhere}
+.order-slip h3,.order-slip p{margin:0}
+.order-slip h3{font-size:17px}
+.order-slip .slip-copy{font-weight:700}
+.order-slip .slip-table-label{font-size:16px;font-weight:700;margin-top:4px}
+.order-slip table{width:100%;border-collapse:collapse;margin-block:6px}
+.order-slip th,.order-slip td{padding:4px 2px;vertical-align:top;text-align:left}
+.order-slip th{border-block:1px solid #000}
+.order-slip .slip-qty,.order-slip .slip-money{text-align:right;white-space:nowrap}
+.order-slip .slip-item-detail{font-size:11px;white-space:pre-wrap;margin-top:2px}
+.order-slip .slip-total{border-top:1px solid #000;padding-top:4px;font-weight:700;text-align:right}
+#order-slip-paper{display:none}
+@page order-slip{margin:2mm 0}
+@media print{
+  body.printing-order-slip{margin:0;background:#fff}
+  body.printing-order-slip > :not(#order-slip-paper){display:none!important}
+  body.printing-order-slip > #order-slip-paper{display:block}
+  #order-slip-paper .order-slip{page:order-slip}
+  #order-slip-paper .order-slip + .order-slip{break-before:page;page-break-before:always}
+  #order-slip-paper tr{break-inside:avoid;page-break-inside:avoid}
+}
 </style>
 <link rel="stylesheet" href="assets/restaurant.css">
 <header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a></div></nav></header>
@@ -320,10 +345,19 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <p id="guest-review-status" role="status"></p><div id="guest-order-pending"></div>
 </section></aside>
 </div></div></main>
+<dialog id="order-slip-dialog" aria-labelledby="order-slip-title">
+<h2 id="order-slip-title">兩聯出單預覽</h2>
+<div id="order-slip-preview"></div>
+<div class="actions">
+<button type="button" id="order-slip-print" class="primary">列印兩聯</button>
+<form method="dialog"><button>關閉</button></form>
+</div>
+</dialog>
+<div id="order-slip-paper" aria-hidden="true"></div>
 <script src="restaurant-config.js"></script>
 <script src="assets/starter-menu.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/restaurant.js?v=menu-5"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+<script src="assets/restaurant.js?v=print-6"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
 Source: https://github.com/google/fonts/tree/main/ofl/yujimai
 Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
 

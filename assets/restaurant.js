@@ -848,6 +848,93 @@ onForm('report-form',async el=>{
     if(sales.length===1) details.querySelector('details').open=true;
   } catch(error) {result.textContent='';throw error;}
 });
+const orderSlipDialog=byId('order-slip-dialog');
+const orderSlipPaper=byId('order-slip-paper');
+
+function renderOrderSlip(ticket, lines, storeCopy) {
+  const slip=node('article',undefined,'order-slip');
+  slip.append(node('h3',RESTAURANT_NAME),
+    node('p',storeCopy?'店家留存聯':'客人對餐聯','slip-copy'),
+    node('p',ticket.service+(ticket.table_label?'　桌號 '+ticket.table_label:''),'slip-table-label'),
+    node('p','單號 '+ticket.id.slice(0,8).toUpperCase()));
+  if(ticket.created_at){
+    const date=new Date(ticket.created_at);
+    slip.append(node('p',new Intl.DateTimeFormat('zh-TW',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',
+      day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(date)));
+  }
+  const table=node('table');
+  const header=table.createTHead().insertRow();
+  for(const [title,css] of [['餐點',''],['數量','slip-qty'],['金額','slip-money']]){
+    const heading=node('th',title,css);heading.scope='col';header.append(heading);
+  }
+  const body=table.createTBody();
+  let quantity=0,total=0;
+  for(const line of lines){
+    const row=body.insertRow();
+    const item=row.insertCell();
+    item.append(node('strong',line.name));
+    if(line.set_components){
+      for(const [key,label] of setFields)item.append(node('p',label+' '+line.set_components[key],'slip-item-detail'));
+    }
+    if(line.note)item.append(node('p',line.note,'slip-item-detail'));
+    quantity+=line.qty;
+    total+=line.price*line.qty;
+    row.append(node('td','×'+line.qty,'slip-qty'),node('td',money(line.price*line.qty),'slip-money'));
+  }
+  slip.append(table,node('p','共 '+quantity+' 份 · 餐點小計 '+money(total),'slip-total'));
+  if(storeCopy&&ticket.counter_notes)slip.append(node('p','櫃台備註 '+ticket.counter_notes,'slip-item-detail'));
+  return slip;
+}
+
+function previewOrderSlips(ticket) {
+  const lines=ticket.variant_lines?.length?ticket.variant_lines:ticket.lines;
+  if(!lines?.length)throw Error('這筆桌單還沒有已確認的餐點。');
+  const slips=[renderOrderSlip(ticket,lines,false),renderOrderSlip(ticket,lines,true)];
+  byId('order-slip-preview').replaceChildren(...slips);
+  orderSlipPaper.replaceChildren(...slips.map(slip=>slip.cloneNode(true)));
+  if(!orderSlipDialog.open)orderSlipDialog.showModal();
+}
+
+orderSlipDialog.addEventListener('close',()=>{
+  document.body.classList.remove('printing-order-slip');
+  orderSlipPaper.replaceChildren();
+});
+window.addEventListener('afterprint',()=>document.body.classList.remove('printing-order-slip'));
+byId('order-slip-print').addEventListener('click',()=>{
+  document.body.classList.add('printing-order-slip');
+  window.print();
+});
+
+async function openOrderSlips(id, control) {
+  control.disabled=true;
+  try{
+    const [tickets,notes]=await Promise.all([
+      checked(db.rpc('restaurant_open_tables_lines')),
+      checked(db.rpc('restaurant_staff_kitchen_notes')),
+    ]);
+    const ticket=tickets.find(row=>row.id===id);
+    if(!ticket)throw Error('這筆桌單已結帳、取消，或目前查不到。');
+    ticket.counter_notes=staffTicketNotes(ticket,notes);
+    previewOrderSlips(ticket);
+  }catch(error){
+    notice.textContent='無法開啟出單預覽：'+error.message;
+  }finally{
+    control.disabled=false;
+  }
+}
+
+function staffTicketNotes(ticket,notes) {
+  return notes.filter(x=>x.ticket_id===ticket.id).map(x=>(x.source==='addon'?'加點：':'首次點餐：')+x.note).join('；');
+}
+
+function orderSlipButton(id) {
+  return button('列印兩聯',event=>void openOrderSlips(id,event.currentTarget));
+}
+
+function showOrderSent(message,id) {
+  notice.replaceChildren(node('p',message),orderSlipButton(id));
+}
+
 byId('kitchen-refresh').addEventListener('click',loadKitchen);
 byId('send-kitchen').addEventListener('click',async()=>{
   if(addContext) {await sendAddon();return;}
@@ -873,8 +960,9 @@ byId('send-kitchen').addEventListener('click',async()=>{
   try {
     await checked(db.rpc('restaurant_send_kitchen_lines',{ticket_id:kitchenTicket.id,mode:kitchenTicket.service,
       table_name:kitchenTicket.table,request_lines:kitchenTicket.variants,order_note:kitchenTicket.note??''}));
+    const ticketId=kitchenTicket.id;
     clearDraft();
-    notice.textContent='已送廚房並存到待結帳。可以開始點下一桌。';
+    showOrderSent('已送廚房並存到待結帳。可以開始點下一桌。',ticketId);
   } catch(error){
     if(['23505','22023','23514','42501'].includes(error.code)) {
       setTicket(null);
@@ -907,7 +995,7 @@ async function loadOpenTables() {
     const [rows,counterNotes]=await Promise.all([checked(db.rpc('restaurant_open_tables_lines')),checked(db.rpc('restaurant_staff_kitchen_notes'))]);
     list.replaceChildren();
     for(const ticket of rows.filter(row=>!query||row.table_label.toUpperCase().includes(query))) {
-      ticket.counter_notes=counterNotes.filter(x=>x.ticket_id===ticket.id).map(x=>(x.source==='addon'?'加點：':'首次點餐：')+x.note).join('；');
+      ticket.counter_notes=staffTicketNotes(ticket,counterNotes);
       const card=node('div',undefined,'line row');
       const summary=node('div');
       const total=ticket.lines.reduce((sum,item)=>sum+item.price*item.qty,0);
@@ -925,6 +1013,7 @@ async function loadOpenTables() {
         recallTicket(ticket);
         notice.textContent='已叫回 '+(ticket.table_label?'桌號 '+ticket.table_label:'外帶單')+'，請確認付款方式。';
       }));
+      if(ticket.lines.length)card.append(orderSlipButton(ticket.id));
       list.append(card);
     }
     if(!list.children.length) list.append(node('p',query?'查無這個桌號的待結帳單。':'目前沒有待結帳單。'));
@@ -1008,7 +1097,8 @@ function openBookingArrival(booking) {
       modal.close();
       if(!byId('bookings').hidden)await refresh('bookings');
       else await refreshBookingOverview();
-      notice.textContent=sendPreorder&&hasFood?'已報到，預點餐已送廚房。':'已報到。';
+      if(sendPreorder&&hasFood)showOrderSent('已報到，預點餐已送廚房。',booking.id);
+      else notice.textContent='已報到。';
     }catch(error){
       message.textContent=error.message;
       if(hasFood&&/售完|下架|餐點或價格已變更|已有待結帳單/.test(error.message))manual.hidden=false;
@@ -1219,8 +1309,9 @@ async function sendAddon() {
   try {
     await checked(db.rpc('restaurant_add_items_lines',{ticket_id:addContext.ticket_id,
       request_id:addContext.request.id,request_lines:addContext.request.variants,order_note:addContext.request.note??''}));
+    const ticketId=addContext.ticket_id;
     clearDraft();
-    notice.textContent='加點已送廚房並併入原桌單，整桌用餐後一起結帳。';
+    showOrderSent('加點已送廚房並併入原桌單，整桌用餐後一起結帳。',ticketId);
   } catch(error) {
     if(['22023','23505','42501'].includes(error.code)) setAddon({...addContext,request:null});
     notice.textContent=error.message+(addContext?.request?'。請按原按鈕重試加點。':'');
