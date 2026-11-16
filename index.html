@@ -130,11 +130,16 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 #online-basket .actions,#online-queue .actions{display:flex;gap:6px;flex-wrap:wrap}
 #online-staff{padding:12px}
 #online-staff h2{font-size:20px;margin:0}
+#online-slot-settings{margin:14px 0;border:1px solid var(--line);border-radius:8px;padding:0 12px}
+#online-slot-settings summary{cursor:pointer;padding:13px 0;font-weight:700}
+#online-slot-list{padding-bottom:12px}
+.online-alert{display:inline-block;background:#f5ded1;color:#652e22;padding:10px 14px;border-radius:8px;font-weight:700}
+.online-alert[hidden]{display:none}
 #online-queue{max-height:36vh;overflow-y:auto;overflow-wrap:anywhere}
 @media(max-width:767px){.online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1fr)}}
 </style>
 <link rel="stylesheet" href="assets/restaurant.css">
-<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a><a class="mode" href="?view=reserve">線上訂位</a><a class="mode" href="?view=pickup">線上點餐</a></div></nav></header>
+<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a><a class="mode" href="?view=reserve">線上訂位與預點餐</a></div></nav></header>
 <main class="wrap"><section class="farm-cover" aria-label="餐廳封面"><div class="farm-copy"><p data-restaurant-name>小樂義義式餐廰</p><span>義大利麵 · 燉飯 · 手作甜點</span><address style="font-style:normal;margin-top:12px;color:inherit">300新竹市東區金城一路71巷1號</address></div><img alt="義式料理與飲品餐桌" width="2048" height="1638" src="assets/cover.jpg"></section><section id="guest-menu" hidden><h1 id="guest-menu-title">小樂義義式餐廰菜單</h1><div id="guest-categories" class="tabs"></div><p id="guest-status" role="status"></p><p class="menu-notes">餐點附手工麵包。需要加辣可在點餐備註填寫小辣、中辣或大辣。</p>
 <div id="guest-dishes" class="dishes"></div></section><section id="online-public" hidden>
 <div class="row"><h1 id="online-title">線上訂位</h1><a href="?view=menu">返回菜單</a></div>
@@ -146,10 +151,10 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <div id="online-categories" class="tabs"></div><div id="online-dishes" class="dishes"></div>
 </section>
 <form id="online-form" class="panel">
-<div id="online-basket-panel" hidden><h2 id="online-basket-title">外帶清單</h2><div id="online-basket"></div><p><strong id="online-total"></strong></p></div>
+<div id="online-basket-panel" hidden><h2 id="online-basket-title">預點餐清單</h2><div id="online-basket"></div><p><strong id="online-total"></strong></p></div>
 <div class="grid" id="online-contact-fields">
 <label id="online-day-label">日期<input name="day" type="date" required></label>
-<label id="online-time-label">時間<select name="slot" required></select></label>
+<label id="online-time-label">可訂時間<select name="slot" required></select></label>
 <label>姓名<input name="name" autocomplete="name" maxlength="50" required></label>
 <label>聯絡電話<input name="phone" type="tel" autocomplete="tel" maxlength="30" required></label>
 <label id="online-party">人數<input name="guests" type="number" min="1" max="8" value="2" required></label>
@@ -157,7 +162,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 </div>
 <p id="online-preorder-context" hidden></p>
 <label id="online-preorder-note" hidden>預點餐備註（選填）<input name="preorder_note" maxlength="200"></label>
-<button id="online-preorder-back" type="button" hidden>返回訂位</button>
+<button id="online-preorder-back" type="button" hidden>返回訂位進度</button>
 <button id="online-submit" type="submit" class="primary" disabled>送出申請</button>
 <p id="online-send-status" role="status"></p>
 </form>
@@ -177,7 +182,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <label>密碼<input type="password" name="password" autocomplete="current-password" required></label>
 <button class="primary" disabled>登入</button><p id="login-status" role="status"></p></form>
 <div id="staff-app" hidden><div class="row"><p class="muted">訂位與已結帳紀錄儲存於餐飲資料庫。結帳僅記錄付款方式。</p><button type="button" id="sign-out">登出</button></div>
-<div class="sound-controls">
+<div class="sound-controls"><a id="online-alert-count" href="#online-staff" class="online-alert" role="status" hidden></a>
 <div class="primary-work-tabs" aria-label="主要工作">
 <button type="button" id="sound-toggle">啟用聲音提醒</button>
 <button type="button" data-tab="order" aria-pressed="true">櫃台點餐結帳</button>
@@ -221,7 +226,24 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <button class="primary" id="pay" disabled>記錄收款並結帳</button></div></div>
 </form></div>
 </section>
-<section id="bookings" class="panel" hidden><div class="row"><h2>即將到來的訂位</h2><button data-refresh="bookings">重新整理</button></div><details id="new-booking">
+<section id="bookings" class="panel" hidden><div class="row"><h2>即將到來的訂位</h2><button data-refresh="bookings">重新整理</button></div><details id="online-slot-settings">
+<summary>設定線上訂位時段與桌次</summary>
+<form id="online-slot-form" class="form">
+<p class="muted">依日期設定用餐梯次。客人以開始時間訂位，桌次保留到本梯次結束。請填這一梯實際可開放給線上訂位的桌數，電話和現場留桌由店家先扣除。</p>
+<div class="grid">
+<label>日期<input name="day" type="date" required></label>
+<label>開始時間<input name="start" type="time" step="60" value="11:30" required></label>
+<label>結束時間<input name="end" type="time" step="60" value="14:30" required></label>
+<label>2 人桌<input name="tables_2" type="number" min="0" max="40" value="0" required></label>
+<label>4 人桌<input name="tables_4" type="number" min="0" max="40" value="0" required></label>
+<label>6 人桌<input name="tables_6" type="number" min="0" max="40" value="0" required></label>
+<label>8 人桌<input name="tables_8" type="number" min="0" max="40" value="0" required></label>
+</div>
+<label class="tick"><input name="is_open" type="checkbox" checked>開放此梯次</label>
+<button type="submit" class="primary">儲存梯次</button><p id="online-slot-message" role="status"></p>
+</form>
+<div id="online-slot-list" aria-live="polite"></div>
+</details><details id="new-booking">
 <summary>新增電話訂位</summary>
 <form class="form" id="phone-booking">
 <div class="grid">
@@ -288,7 +310,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <script src="restaurant-config.js"></script>
 <script src="assets/starter-menu.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/restaurant.js?v=online-2"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+<script src="assets/restaurant.js?v=online-3"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
 Source: https://github.com/google/fonts/tree/main/ofl/yujimai
 Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
 
