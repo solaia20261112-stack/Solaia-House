@@ -272,9 +272,15 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <div id="tables-list" aria-live="polite"></div></section>
 <section id="kitchen" class="panel" hidden><div class="row"><h2>出餐看板</h2><button type="button" id="kitchen-refresh">重新整理</button></div><p class="muted">此區只顯示待製作、製作中及未確認異動。完成出餐與已確認的取消／退菜會移至下方紀錄。</p><div id="kitchen-list"></div><details id="kitchen-history" hidden><summary id="kitchen-history-summary">已完成出餐與已確認異動</summary><p class="muted">僅供查閱，不需再次製作或送餐。顯示當日可查詢的完成紀錄。</p><div id="kitchen-history-list"></div></details></section>
 <section id="menu-admin" class="panel" hidden><h2>菜單管理</h2><label>選擇餐點<select id="menu-picker"></select></label>
-<form id="edit-menu" class="form"><div class="grid"><label>餐點名稱<input name="name" maxlength="60" required></label><label>分類<input name="category" maxlength="30" required></label>
+<form id="edit-menu" class="form"><div class="grid"><label>餐點名稱<input name="name" maxlength="60" required></label><label>分類<select name="category" required><option>單餐</option><option>飲料</option><option>甜點</option><option>套餐</option></select></label>
 <label>售價（元）<input type="number" name="price" min="0" max="1000000" step="1" required></label><label>菜單照片<input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></label></div>
-<label class="tick"><input type="checkbox" name="active" checked>供應中，顯示在公開菜單</label><button class="primary" type="submit">儲存餐點</button></form></section>
+<fieldset id="menu-set-components" hidden disabled><legend>套餐內容</legend><div class="grid">
+<label>主餐<input name="set_main" maxlength="100" required></label>
+<label>飲料<input name="set_drink" maxlength="100" required></label>
+<label>甜點<input name="set_dessert" maxlength="100" required></label>
+</div></fieldset>
+<label class="tick"><input type="checkbox" name="active" checked>供應中，顯示在公開菜單</label>
+<div class="actions"><button class="primary" type="submit">儲存餐點</button><button id="menu-delete" type="button" hidden>刪除餐點</button></div></form></section>
 <section id="availability" class="panel" hidden><h2>今日供餐項目</h2><p>售完設定只限今天（台灣時間），隔天自動恢復供應。永久停賣請由管理者至菜單管理下架。</p><button type="button" id="availability-refresh">重新整理</button><div id="availability-list"></div></section>
 <section id="close-report" class="panel" hidden><h2>每日收班核對</h2><form id="close-report-form" class="form"><label>營業日期<input type="date" name="day" required></label><button type="submit" class="primary">查詢收班報表</button></form><p id="close-report-status" role="status"></p><div id="close-report-result"></div><label>盤點當日現金實收（選填；請先扣除備用金）<input id="counted-cash" type="number" min="0" step="1"></label><p id="cash-difference" role="status"></p><p class="muted">盤點金額用於本次核對與匯出。切換至本頁及交易異動後會更新報表；停留此頁每 15 秒更新，匯出前再核對最新資料。</p><button type="button" id="close-download" disabled>下載收班 CSV 報表</button></section>
 <section id="dining" class="panel" hidden><h2>桌號 QR 點餐</h2>
@@ -317,7 +323,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <script src="restaurant-config.js"></script>
 <script src="assets/starter-menu.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/restaurant.js?v=online-4"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+<script src="assets/restaurant.js?v=menu-5"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
 Source: https://github.com/google/fonts/tree/main/ofl/yujimai
 Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
 

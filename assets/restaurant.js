@@ -11,6 +11,25 @@ const byId=id=>document.getElementById(id);
 const form=byId('checkout');
 const notice=byId('notice');
 const money=value=>'NT$ '+value.toLocaleString('zh-TW');
+const menuCategories=['單餐','飲料','甜點','套餐'];
+function menuGroup(dish) {
+  if(menuCategories.includes(dish.category))return dish.category;
+  if(/甜點|蛋糕|冰淇淋/.test(dish.category))return '甜點';
+  if(/飲|啡|茶|酒|果汁/.test(dish.category))return '飲料';
+  return '單餐';
+}
+function menuGroups(dishes) {
+  const available=new Set(dishes.map(menuGroup));
+  return menuCategories.filter(category=>available.has(category));
+}
+const setFields=[['main','主餐'],['drink','飲料'],['dessert','甜點']];
+function setContents(dish) {
+  return dish?.set_components ? setFields.map(([key,label])=>label+' '+dish.set_components[key]).join(' · ') : '';
+}
+function menuLineName(dish) {
+  const contents=setContents(dish);
+  return dish.name+(contents?'（'+contents+'）':'');
+}
 const cart=new Map();
 let menu=[];
 let pending=null;
@@ -76,7 +95,7 @@ async function checked(operation) {
 async function api(path,data) {
   const now=nowInTaipei();
   const today=now.slice(0,10);
-  if(path==='menu') return checked(db.from('restaurant_menu').select('id,category,name,price,sold_out_date')
+  if(path==='menu') return checked(db.from('restaurant_menu').select('id,category,name,price,sold_out_date,set_components')
     .eq('active',true).order('category').order('name'));
   if(path==='reservations') {
     const rows=await checked(db.from('restaurant_bookings')
@@ -130,9 +149,10 @@ async function api(path,data) {
 function renderMenu(category) {
   const dishes=byId('dishes');
   dishes.replaceChildren();
-  for(const dish of menu.filter(dish=>category==='全部'||dish.category===category)) {
+  for(const dish of menu.filter(dish=>category==='全部'||menuGroup(dish)===category)) {
     const el=button(dish.name,()=>change(dish,1));
     el.className='dish';
+    if(setContents(dish))el.append(node('small',setContents(dish)));
     el.append(node('small',money(dish.price)+(soldOut(dish)?' · 今日售完':'')));
     el.disabled=soldOut(dish);
     dishes.append(el);
@@ -181,7 +201,7 @@ function showCheckoutConflict(tickets) {
   notice.replaceChildren(node('p','這個桌號已有待結帳單。請叫回原單核對後結帳，或修改目前訂單的桌號。'));
   for(const ticket of tickets) {
     const subtotal=ticket.lines.reduce((sum,item)=>sum+item.price*item.qty,0);
-    notice.append(node('p','原單 '+ticket.table_label+' · '+(ticket.variant_lines??ticket.lines).map(item=>item.name+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')+' · '+money(subtotal)));
+    notice.append(node('p','原單 '+ticket.table_label+' · '+(ticket.variant_lines??ticket.lines).map(item=>menuLineName(item)+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')+' · '+money(subtotal)));
     if(!kitchenTicket?.sent) notice.append(button('把目前餐點加入此桌',()=>beginAddon(ticket,true)));
     notice.append(button('叫回這筆原單',()=>{
       if(busy) return;
@@ -326,7 +346,7 @@ async function refresh(tab) {
         if(!sale.variant_lines&&sale.original_variant_lines)line.append(node('p','原始餐點需求（帳目已調整）：'+sale.original_variant_lines.map(x=>x.name+' × '+x.qty+(x.note?'〔'+x.note+'〕':'')).join('、')));
         if(sale.staff_note)line.append(node('p','櫃台備註：'+sale.staff_note,'message'));
         line.append(node('strong',sale.display_time+' · '+sale.service+' '+sale.table_label+' · '+money(sale.total)+' · '+sale.payment),
-          node('p',sale.lines.map(item=>item.name+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')),saleActions(sale));
+          node('p',sale.lines.map(item=>menuLineName(item)+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')),saleActions(sale));
         list.append(line);
       }
     }
@@ -355,7 +375,7 @@ async function start() {
     menu=await api('menu');
     const categories=byId('categories');
     categories.replaceChildren();
-    for(const category of ['全部',...new Set(menu.map(dish=>dish.category))]) {
+    for(const category of ['全部',...menuGroups(menu)]) {
       const el=button(category,()=>{
         for(const option of categories.children) option.setAttribute('aria-pressed',String(option===el));
         renderMenu(category);
@@ -518,12 +538,10 @@ async function showGuestMenu(previewMenu) {
   mode.href='?view=staff';mode.textContent='員工工作台';
   const grid=byId('guest-dishes');
   const dishes=previewMenu??await checked(db.from('restaurant_menu')
-    .select('id,category,name,price,image_path,active,sold_out_date')
+    .select('id,category,name,price,image_path,active,sold_out_date,set_components')
     .eq('active',true).order('category').order('name'));
   const filters=byId('guest-categories');
-  const categoryOrder=new Set(starterMenu.map(dish=>dish.category));
-  const availableCategories=new Set(dishes.map(dish=>dish.category));
-  const categories=[...new Set([...categoryOrder,...availableCategories])].filter(category=>availableCategories.has(category));
+  const categories=menuGroups(dishes);
   function group(title,items){
     if(!items.length)return;
     const section=node('section',undefined,'guest-menu-group');
@@ -534,6 +552,7 @@ async function showGuestMenu(previewMenu) {
       const copy=node('div',undefined,'guest-menu-copy');
       copy.append(node('h3',dish.name+(soldOut(dish)?' · 今日售完':'')),node('strong',money(dish.price)));
       const description=starterById.get(dish.id)?.description;
+      if(setContents(dish))copy.append(node('p',setContents(dish)));
       if(description)copy.append(node('p',description));
       card.append(copy);
       const image=picture(dish);if(image)card.append(image);
@@ -543,7 +562,7 @@ async function showGuestMenu(previewMenu) {
   }
   function draw(category){
     grid.replaceChildren();
-    for(const name of category==='全部'?categories:[category])group(name,dishes.filter(dish=>dish.category===name));
+    for(const name of category==='全部'?categories:[category])group(name,dishes.filter(dish=>menuGroup(dish)===name));
     if(!grid.children.length)grid.append(node('p','目前沒有供應中的餐點。'));
   }
   for(const category of ['全部',...categories]){
@@ -557,10 +576,18 @@ async function showGuestMenu(previewMenu) {
 }
 const menuForm=byId('edit-menu');
 const menuPicker=byId('menu-picker');
+const menuSetFields=byId('menu-set-components');
+const deleteMenuDish=byId('menu-delete');
+function updateMenuSetFields(){
+  const isSet=menuForm.elements.category.value==='套餐';
+  menuSetFields.hidden=!isSet;
+  menuSetFields.disabled=!isSet;
+}
+menuForm.elements.category.addEventListener('change',updateMenuSetFields);
 let catalog=[];
 async function loadCatalog(selected='') {
-  catalog=await checked(db.from('restaurant_menu').select('id,name,category,price,active,image_path').order('category').order('name'));
-  menuPicker.replaceChildren(new Option('修改餐點價格',''));
+  catalog=await checked(db.from('restaurant_menu').select('id,name,category,price,active,image_path,set_components').is('archived_at',null).order('category').order('name'));
+  menuPicker.replaceChildren(new Option('請選擇要修改的餐點',''));
   for(const dish of catalog) menuPicker.add(new Option(dish.name+(dish.active?'':'（已下架）'),dish.id));
   menuPicker.value=selected;
   fillMenu();
@@ -568,9 +595,14 @@ async function loadCatalog(selected='') {
 function fillMenu() {
   menuForm.reset();
   const dish=catalog.find(d=>d.id===menuPicker.value);
-  if(!dish) return;
-  for(const key of ['name','category','price']) menuForm.elements[key].value=dish[key];
-  menuForm.elements.active.checked=dish.active;
+  deleteMenuDish.hidden=!dish;
+  if(dish){
+    for(const key of ['name','price']) menuForm.elements[key].value=dish[key];
+    menuForm.elements.category.value=menuGroup(dish);
+    menuForm.elements.active.checked=dish.active;
+    for(const [key] of setFields)menuForm.elements['set_'+key].value=dish.set_components?.[key]??'';
+  }
+  updateMenuSetFields();
 }
 menuPicker.addEventListener('change',fillMenu);
 const menuActions = node('div', undefined, 'actions');
@@ -598,7 +630,10 @@ onForm('edit-menu',async el=>{
   const id=selected?.id??uniqueId();
   const file=el.elements.photo.files[0];
   const name=el.elements.name.value.trim();
-  const category=el.elements.category.value.trim();
+  const group=el.elements.category.value;
+  const category=selected&&menuGroup(selected)===group&&group!=='套餐'?selected.category:group;
+  const set_components=group==='套餐'?Object.fromEntries(setFields.map(([key])=>[key,el.elements['set_'+key].value.trim()])):null;
+  if(set_components&&Object.values(set_components).some(value=>!value||value.length>100))throw Error('請填寫套餐的主餐、飲料和甜點。');
   const price=Number(el.elements.price.value);
   if(!name||!category||!Number.isInteger(price)||price<0||price>1000000) throw Error('請確認名稱、分類和售價。');
   let imagePath=selected?.image_path??null;
@@ -608,11 +643,26 @@ onForm('edit-menu',async el=>{
     imagePath=id+'/'+uniqueId()+'.'+extension;
     await checked(db.storage.from(menuBucket).upload(imagePath,file));
   }
-  const entry={name,category,price,image_path:imagePath,active:el.elements.active.checked};
-  await checked(selected?db.from('restaurant_menu').update(entry).eq('id',id):db.from('restaurant_menu').insert({...entry,id}));
+  const entry={name,category,price,image_path:imagePath,set_components,active:el.elements.active.checked};
+  await checked(selected?db.from('restaurant_menu').update(entry).eq('id',id).is('archived_at',null).select('id').single():db.from('restaurant_menu').insert({...entry,id}));
   await loadCatalog(id);
   await start();
   notice.textContent='餐點已儲存。';
+});
+deleteMenuDish.addEventListener('click',async()=>{
+  const dish=catalog.find(row=>row.id===menuPicker.value);
+  const submit=menuForm.querySelector('button[type="submit"]');
+  if(!dish||submit.disabled||!confirm('確定刪除「'+dish.name+'」？既有訂單與交易紀錄會保留。'))return;
+  submit.disabled=true;
+  deleteMenuDish.disabled=true;
+  try{
+    await checked(db.from('restaurant_menu').update({active:false,archived_at:new Date().toISOString()})
+      .eq('id',dish.id).is('archived_at',null).select('id').single());
+    await loadCatalog();
+    await start();
+    notice.textContent='餐點已從菜單移除。';
+  }catch(error){notice.textContent=error.message;}
+  finally{deleteMenuDish.disabled=false;submit.disabled=false;}
 });
 let staffAccounts=[];
 let staffLoading=false;
@@ -863,7 +913,7 @@ async function loadOpenTables() {
       const total=ticket.lines.reduce((sum,item)=>sum+item.price*item.qty,0);
       const status=ticket.lines.length?{queued:'待製作',preparing:'製作中',served:'已出餐'}[ticket.status]:'尚未確認餐點';
       summary.append(node('strong',(ticket.table_label?'桌號 '+ticket.table_label:'外帶')+' · '+status+' · '+money(total)),
-        node('p',(ticket.variant_lines??ticket.lines).map(item=>item.name+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')));
+        node('p',(ticket.variant_lines??ticket.lines).map(item=>menuLineName(item)+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')).join('、')));
       if(ticket.counter_notes)summary.append(node('p','櫃台備註：'+ticket.counter_notes,'message counter-note-text'));
       card.append(summary,button('修改／退菜',()=>amendTicket(ticket)),button('加點',()=>beginAddon(ticket,cart.size>0)),button('叫回結帳',()=>{
         if(!ticket.lines.length){notice.textContent='本桌尚無確認餐點，請先到 QR 點餐確認或退回客單。';return;}
@@ -928,7 +978,7 @@ function appendBookingPreorder(card,booking) {
   if(booking.online.preorder_status)card.append(node('p',preorderLabels[booking.online.preorder_status]));
   if(booking.online.lines.length){
     for(const item of booking.online.lines){
-      card.append(node('p','預點餐 '+item.name+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')));
+      card.append(node('p','預點餐 '+menuLineName(item)+' × '+item.qty+(item.note?'〔'+item.note+'〕':'')));
     }
     if(booking.online.note)card.append(node('p','預點餐備註 '+booking.online.note));
   }
@@ -1262,7 +1312,7 @@ async function refreshDining() {
   for(const order of requests) {
    const card=node('article',undefined,'panel');
    card.append(node('h3','桌號 '+order.table_label+' · '+new Date(order.created_at).toLocaleString('zh-TW',{timeZone:'Asia/Taipei',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})));
-   for(const line of order.lines)card.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')+' · '+money(line.price*line.qty)));
+   for(const line of order.lines)card.append(node('p',menuLineName(line)+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')+' · '+money(line.price*line.qty)));
    if(order.note)card.append(node('p','客人備註：'+order.note,'message'));
    card.append(node('strong','本次小計 '+money(order.lines.reduce((sum,x)=>sum+x.price*x.qty,0))));
    if(order.expired)card.append(node('p','本桌已關閉或到期，請退回此單。'));
@@ -1310,7 +1360,7 @@ function saveGuestDraft() {
 async function refreshGuestState() {
  if(guestRefreshBusy)return;guestRefreshBusy=true;
  try {
-  guestMenu=(await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date').eq('active',true).order('category').order('name'))).map(d=>({...d,menuPrice:d.price}));
+  guestMenu=(await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date,set_components').eq('active',true).order('category').order('name'))).map(d=>({...d,menuPrice:d.price}));
   guestSession=await checked(db.rpc('restaurant_guest_view_lines',{table_key:diningKey,visit_key:guestVisit}));
   byId('guest-table-title').textContent='桌號 '+guestSession.table+' · 自助點餐';
   byId('guest-new-visit').hidden=guestSession.active;
@@ -1322,7 +1372,7 @@ async function refreshGuestState() {
    const card=node('article',undefined,'panel');
    const status=order.status==='pending'?'等待店員確認':order.status==='rejected'?'已退回':({served:'已出餐',preparing:'製作中',queued:'已確認，待製作'}[order.kitchen_status]??'店員已確認');
    card.append(node('strong',status+' · '+new Date(order.created_at).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Taipei'})));
-   for(const line of order.lines)card.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
+   for(const line of order.lines)card.append(node('p',menuLineName(line)+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
    if(order.note)card.append(node('p','備註：'+order.note));if(order.reason)card.append(node('p',order.reason));list.append(card);
   }
   if(!guestSession.orders.length)list.append(node('p','本桌尚未送出餐點。'));
@@ -1333,13 +1383,13 @@ async function refreshGuestState() {
 async function showGuestOrder() {
  byId('guest-order').hidden=false;login.hidden=true;byId('staff-heading').hidden=true;
  try {
-  guestMenu=(await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date').eq('active',true).order('category').order('name'))).map(d=>({...d,menuPrice:d.price}));
+  guestMenu=(await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date,set_components').eq('active',true).order('category').order('name'))).map(d=>({...d,menuPrice:d.price}));
   try {
    const saved=JSON.parse(localStorage.getItem(guestStoreKey));
    if(saved){for(const [id,qty]of saved.items??[])if(Number.isInteger(qty)&&qty>0&&qty<=99)guestBasket.set(id,qty);byId('guest-note').value=String(saved.note??'').slice(0,300);guestFrozen=saved.frozen??null;guestVisit=saved.visit??null;guestVariants=saved.variants??guestFrozen?.variants??legacyVariants((saved.items??[]).map(([id,qty])=>({id,qty})));syncGuestVariants();if(guestFrozen&&!guestFrozen.variants)guestFrozen.variants=variantRequest(guestVariants);}
   }catch{}
   const tabs=byId('guest-order-categories');
-  for(const category of ['全部',...new Set(guestMenu.map(x=>x.category))]) {
+  for(const category of ['全部',...menuGroups(guestMenu)]) {
    const tab=button(category,()=>{guestCategory=category;for(const x of tabs.children)x.setAttribute('aria-pressed',String(x===tab));renderGuestDishes();});
    tab.setAttribute('aria-pressed',String(category==='全部'));tabs.append(tab);
   }
@@ -1472,7 +1522,7 @@ async function loadKitchen() {
     const done=p?.delivered??(batch.status==='served'?item.qty:0);
     const row=node('div',undefined,'line row');
     if(item.note)row.append(node('p','需求：'+item.note,'variant-note'));
-    row.append(node('strong',item.name+' × '+item.qty),node('span','已送 '+done+'／'+item.qty+' · 未送 '+Math.max(0,item.qty-done)));
+    row.append(node('strong',menuLineName(item)+' × '+item.qty),node('span','已送 '+done+'／'+item.qty+' · 未送 '+Math.max(0,item.qty-done)));
     if(batch.status!=='served'&&done<item.qty)row.append(button('送出 1 份',async event=>{
      const control=event.currentTarget;control.disabled=true;
      try{await checked(db.rpc('restaurant_deliver_item',{kind:batch.source,batch:batch.id,item_id:item.id,expected_quantity:item.qty,expected_delivered:done}));await loadKitchen();}
@@ -1658,7 +1708,8 @@ function rowNote(x){return x.note?'需求：'+x.note:'依原餐點設定';}
 function selectVariant(dish,existing,callback){
  const {modal,editor,actions,message,save}=editDialog(dish.name+' · 個別需求');save.textContent='加入這筆餐點';
  const quantity=field(editor,'這筆份數（相同需求）','number','quantity',existing?.qty??1);quantity.min='1';quantity.max='99';quantity.step='1';quantity.required=true;
- const drink=/飲|咖啡|茶|拿鐵|卡布|果汁|冰沙|café|cafe|tea|smoothie/i.test(dish.category+' '+dish.name);
+ const drink=menuGroup(dish)!=='套餐'&&(menuGroup(dish)==='飲料'||/飲|咖啡|茶|拿鐵|卡布|果汁|冰沙|café|cafe|tea|smoothie/i.test(dish.name));
+ if(setContents(dish))editor.append(node('p',setContents(dish)));
  let ice=null,sugar=null;
  if(drink){
   if(!/熱/.test(dish.name))ice=field(editor,'冰量','optional','ice',existing?.ice??'',[['','依原設定'],['正常冰','正常冰'],['少冰','少冰'],['去冰','去冰']]);
@@ -1698,7 +1749,7 @@ function renderCart(){
  for(const x of rows){
   const dish=kitchenTicket?.sent?x:menu.find(d=>d.id===x.menu_id);const price=dish?.price??0;total+=price*x.qty;
   const row=node('article',undefined,'line variant-row');
-  row.append(node('strong',(dish?.name??'已下架餐點')+' × '+x.qty+' · '+money(price*x.qty)),node('p',rowNote(x),'variant-note'));
+  row.append(node('strong',(dish?menuLineName(dish):'已下架餐點')+' × '+x.qty+' · '+money(price*x.qty)),node('p',rowNote(x),'variant-note'));
   if(!readonly){
    const controls=node('div',undefined,'actions');
    controls.append(button('修改需求',()=>counterPick(dish,x)),button('另加同款',()=>counterPick(dish,x,true)),button('移除這筆',()=>{
@@ -1730,9 +1781,10 @@ function guestPick(dish,existing=null,duplicate=false){
 }
 function renderGuestDishes(){
  const grid=byId('guest-order-dishes');grid.replaceChildren();
- for(const dish of guestMenu.filter(x=>guestCategory==='全部'||x.category===guestCategory)){
+ for(const dish of guestMenu.filter(x=>guestCategory==='全部'||menuGroup(x)===guestCategory)){
   const card=node('article',undefined,'panel guest-card');const photo=picture(dish);if(photo)card.append(photo);
-  card.append(node('small',dish.category),node('h3',dish.name),node('strong',money(dish.price)+(soldOut(dish)?' · 今日售完':'')));
+  card.append(node('small',menuGroup(dish)),node('h3',dish.name),node('strong',money(dish.price)+(soldOut(dish)?' · 今日售完':'')));
+  if(setContents(dish))card.append(node('p',setContents(dish)));
   const control=button('選擇需求',()=>guestPick(dish));control.disabled=guestSending||!!guestFrozen||!guestSession?.active||soldOut(dish);
   card.append(node('p','已選 '+variantQuantity(guestVariants,dish.id)+' 份'),control);grid.append(card);
  }
@@ -1741,7 +1793,7 @@ function renderGuestBasket(){
  const list=byId('guest-basket');list.replaceChildren();let total=0;
  for(const x of guestVariants){
   const dish=guestMenu.find(d=>d.id===x.menu_id),price=dish?.price??0;total+=price*x.qty;
-  const row=node('article',undefined,'line variant-row');row.append(node('strong',(dish?.name??'已下架餐點')+' × '+x.qty+' · '+money(price*x.qty)),node('p',rowNote(x),'variant-note'));
+  const row=node('article',undefined,'line variant-row');row.append(node('strong',(dish?menuLineName(dish):'已下架餐點')+' × '+x.qty+' · '+money(price*x.qty)),node('p',rowNote(x),'variant-note'));
   if(!guestSending&&!guestFrozen&&guestSession?.active){
    const controls=node('div',undefined,'actions');
    if(dish&&!soldOut(dish))controls.append(button('修改需求',()=>guestPick(dish,x)),button('另加同款',()=>guestPick(dish,x,true)));
@@ -1799,19 +1851,17 @@ async function onlineTimeOptions() {
   try{
     const result=await checked(db.rpc('restaurant_booking_availability',{requested_day:day.value,party_size:size}));
     if(seq!==slotLookup)return;
-    const options=result.map(row=>{
-      const option=new Option(row.time+(row.available?'':'（已滿或關閉）'),row.time);
-      option.disabled=!row.available;
-      return option;
-    });
-    const available=result.some(row=>row.available);
-    slot.replaceChildren(new Option(available?'請選擇時間':'目前沒有可訂時段',''),...options);
-    if(result.some(row=>row.available&&row.time===selected))slot.value=selected;
-    status.textContent=available?'':result.length?'當日已無符合人數的桌次，請選其他日期。':'店家尚未開放這天的線上訂位。';
+    const available=result.filter(row=>row.available);
+    const options=available.map(row=>new Option(
+      row.end_time?row.time+'–'+row.end_time:row.time,row.time
+    ));
+    slot.replaceChildren(new Option(options.length?'請選擇可預約時段':'目前沒有可預約時段',''),...options);
+    if(available.some(row=>row.time===selected))slot.value=selected;
+    status.textContent=options.length?'':'這天沒有符合人數的可預約時段，請選其他日期。';
   }catch(error){
     if(seq!==slotLookup)return;
     slot.replaceChildren(new Option('暫時無法讀取時段',''));
-    status.textContent='無法取得可訂時間，請重試或聯絡店家。';
+    status.textContent='無法取得可預約時段，請重試或聯絡店家。';
   }
   if(seq===slotLookup)updateOnlineControls();
 }
@@ -1844,7 +1894,7 @@ function renderOnlineBasket() {
     const price=prices?.[item.menu_id]??dish?.price??0;
     total+=price*item.qty;
     const row=node('div',undefined,'line');
-    row.append(node('strong',(dish?.name??'原申請餐點')+' × '+item.qty+' · '+money(price*item.qty)));
+    row.append(node('strong',(dish?menuLineName(dish):'原申請餐點')+' × '+item.qty+' · '+money(price*item.qty)));
     if(item.note)row.append(node('p',item.note));
     if(!onlineDraft&&!onlineSending) {
       const actions=node('div',undefined,'actions');
@@ -1873,18 +1923,19 @@ function pickOnlineDish(dish,existing=null) {
 function renderOnlineMenu() {
   const tabs=byId('online-categories');
   tabs.replaceChildren();
-  for(const category of ['全部',...new Set(onlineMenu.map(d=>d.category))]) {
+  for(const category of ['全部',...menuGroups(onlineMenu)]) {
     const tab=button(category,()=>{onlineCategory=category;renderOnlineMenu();});
     tab.setAttribute('aria-pressed',String(category===onlineCategory));
     tabs.append(tab);
   }
   const grid=byId('online-dishes');
   grid.replaceChildren();
-  for(const dish of onlineMenu.filter(d=>onlineCategory==='全部'||d.category===onlineCategory)) {
+  for(const dish of onlineMenu.filter(d=>onlineCategory==='全部'||menuGroup(d)===onlineCategory)) {
     const card=node('article',undefined,'panel guest-card');
     const photo=picture(dish);
     if(photo)card.append(photo);
     card.append(node('h3',dish.name),node('strong',money(dish.price)));
+    if(setContents(dish))card.append(node('p',setContents(dish)));
     const add=button(soldOut(dish)?'今日售完':'選擇餐點',()=>pickOnlineDish(dish));
     add.disabled=soldOut(dish)||onlineSending||!!onlineDraft;
     card.append(add);
@@ -1928,7 +1979,7 @@ async function refreshOnlineStatus() {
         item.append(link);
       }
       if(row.lines.length&&row.preorder_status)item.append(node('p',preorderLabels[row.preorder_status],'muted'));
-      for(const line of row.lines)item.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
+      for(const line of row.lines)item.append(node('p',menuLineName(line)+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
       if(row.lines.length)item.append(node('p','小計 '+money(row.lines.reduce((sum,line)=>sum+line.price*line.qty,0))));
       if(row.can_preorder&&!preorderBooking&&!onlineDraft){
         item.append(button('這筆訂位先點餐',()=>void beginPreorder(row)));
@@ -1944,7 +1995,7 @@ async function refreshOnlineStatus() {
 }
 
 async function fetchOnlineMenu() {
-  const dishes=await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date')
+  const dishes=await checked(db.from('restaurant_menu').select('id,category,name,price,image_path,active,sold_out_date,set_components')
     .eq('active',true).order('category').order('name'));
   return dishes;
 }
@@ -2200,7 +2251,7 @@ async function refreshOnlineQueue() {
       if(row.note)card.append(node('p','訂位備註 '+row.note));
       if(row.priced_lines.length){
         card.append(node('strong',booking?'預點餐待確認':'餐點'));
-        for(const line of row.priced_lines)card.append(node('p',line.name+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
+        for(const line of row.priced_lines)card.append(node('p',menuLineName(line)+' × '+line.qty+(line.note?'〔'+line.note+'〕':'')));
         card.append(node('p','小計 '+money(row.priced_lines.reduce((sum,line)=>sum+line.price*line.qty,0))));
         if(row.preorder_note)card.append(node('p','餐點備註 '+row.preorder_note));
       }
