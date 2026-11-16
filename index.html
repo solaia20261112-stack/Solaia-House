@@ -122,6 +122,13 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 @media(max-width:767px){.checkout-options{grid-template-columns:1fr}.checkout-actions button{margin-bottom:8px}}
 
 .online-links{display:flex;flex-wrap:wrap;gap:8px}
+.guest-menu-heading{display:flex;align-items:center;flex-wrap:wrap;gap:12px 24px;margin:8px 0 12px}
+.guest-menu-heading h1{margin:0}
+.guest-booking-button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 20px;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;text-decoration:none}
+.guest-booking-button:hover{text-decoration:underline;text-underline-offset:3px}
+.guest-booking-button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+@media(max-width:600px){.guest-menu-heading{flex-direction:column;align-items:flex-start;gap:10px}.guest-booking-button{width:100%}}
+
 #online-public,#online-tracking{margin-top:20px}
 .online-layout{display:grid;gap:16px;align-items:start}
 .online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)}
@@ -139,8 +146,8 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 @media(max-width:767px){.online-layout:has(#online-menu-panel:not([hidden])){grid-template-columns:minmax(0,1fr)}}
 </style>
 <link rel="stylesheet" href="assets/restaurant.css">
-<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a><a class="mode" href="?view=reserve">線上訂位與預點餐</a></div></nav></header>
-<main class="wrap"><section class="farm-cover" aria-label="餐廳封面"><div class="farm-copy"><p data-restaurant-name>小樂義義式餐廰</p><span>義大利麵 · 燉飯 · 手作甜點</span><address style="font-style:normal;margin-top:12px;color:inherit">300新竹市東區金城一路71巷1號</address></div><img alt="義式料理與飲品餐桌" width="2048" height="1638" src="assets/cover.jpg"></section><section id="guest-menu" hidden><h1 id="guest-menu-title">小樂義義式餐廰菜單</h1><div id="guest-categories" class="tabs"></div><p id="guest-status" role="status"></p><p class="menu-notes">餐點附手工麵包。需要加辣可在點餐備註填寫小辣、中辣或大辣。</p>
+<header><nav class="wrap"><div class="brand"><span class="seal" aria-hidden="true">IT</span><div><strong data-restaurant-name>小樂義義式餐廰</strong></div></div><div class="online-links"><a class="mode" href="?view=menu">客人菜單</a></div></nav></header>
+<main class="wrap"><section class="farm-cover" aria-label="餐廳封面"><div class="farm-copy"><p data-restaurant-name>小樂義義式餐廰</p><span>義大利麵 · 燉飯 · 手作甜點</span><address style="font-style:normal;margin-top:12px;color:inherit">300新竹市東區金城一路71巷1號</address></div><img alt="義式料理與飲品餐桌" width="2048" height="1638" src="assets/cover.jpg"></section><section id="guest-menu" hidden><div class="guest-menu-heading"><h1 id="guest-menu-title">小樂義義式餐廰菜單</h1><a class="guest-booking-button" href="?view=reserve">線上訂位與預點餐</a></div><div id="guest-categories" class="tabs"></div><p id="guest-status" role="status"></p><p class="menu-notes">餐點附手工麵包。需要加辣可在點餐備註填寫小辣、中辣或大辣。</p>
 <div id="guest-dishes" class="dishes"></div></section><section id="online-public" hidden>
 <div class="row"><h1 id="online-title">線上訂位</h1><a href="?view=menu">返回菜單</a></div>
 <p id="online-intro" class="muted"></p>
@@ -154,7 +161,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <div id="online-basket-panel" hidden><h2 id="online-basket-title">預點餐清單</h2><div id="online-basket"></div><p><strong id="online-total"></strong></p></div>
 <div class="grid" id="online-contact-fields">
 <label id="online-day-label">日期<input name="day" type="date" required></label>
-<label id="online-time-label">可訂時間<select name="slot" required></select></label>
+<label id="online-time-label">可預約時段<select name="slot" required></select></label>
 <label>姓名<input name="name" autocomplete="name" maxlength="50" required></label>
 <label>聯絡電話<input name="phone" type="tel" autocomplete="tel" maxlength="30" required></label>
 <label id="online-party">人數<input name="guests" type="number" min="1" max="8" value="2" required></label>
@@ -310,7 +317,7 @@ textarea{width:100%;min-height:82px;font:inherit;padding:10px 12px;border:1px so
 <script src="restaurant-config.js"></script>
 <script src="assets/starter-menu.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/restaurant.js?v=online-3"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
+<script src="assets/restaurant.js?v=online-4"></script><!-- Brand font: Yuji Mai by the Yuji Project Authors. Six-character WOFF subset renamed Linglan Brush.
 Source: https://github.com/google/fonts/tree/main/ofl/yujimai
 Copyright 2021 The Yuji Project Authors (https://github.com/Kinutafontfactory/Yuji)
 
